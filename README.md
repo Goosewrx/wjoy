@@ -1,14 +1,26 @@
-# wjoy
+# Fairway League Hub
 
-Project now hosted here. And temporary suspended.
-Sorry for all, but i'm currently doesn't have too many time for work on this project.
-But! In not distant future, i hope, i can continue to work on WJoy.
+A browser-based golf league operations page for tracking leagues, roster spots, player payments, round schedules, and tee-time assignments.
 
-Really sorry.
+## Run locally
 
-In any way, after closing google.code project code will not be lost.
+This is a static app with no build step.
 
-PS: latest version (0.7.1) you can download from here: https://yadi.sk/d/Fj6PYXpKiMPwc
+```bash
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000`.
+
+## Features
+
+- Create, switch between, and delete leagues.
+- Edit each league's name, season, dues, and roster capacity.
+- Add and remove rostered players.
+- Track player statuses, contact details, notes, and payments.
+- Add rounds with course, date, tee time, roster spots, and notes.
+- Assign rostered golfers to tee-time spots and remove assignments.
+- Persist data in the browser with `localStorage`.
 
 ## New concept notes
 
