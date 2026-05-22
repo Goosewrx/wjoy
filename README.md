@@ -9,3 +9,7 @@ Really sorry.
 In any way, after closing google.code project code will not be lost.
 
 PS: latest version (0.7.1) you can download from here: https://yadi.sk/d/Fj6PYXpKiMPwc
+
+## New concept notes
+
+- [Golf leveling app concept](docs/golf-leveling-app.md) - a product and MVP plan for a golf practice app with RPG-style progression built around this repository's Wiimote motion-input capabilities.
