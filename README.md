@@ -17,6 +17,7 @@ Then open `http://localhost:8000`.
 - Create, switch between, and delete leagues.
 - Edit each league's name, season, dues, and roster capacity.
 - Add and remove rostered players.
+- Create league teams and assign rostered players to team rosters.
 - Track player statuses, contact details, notes, and payments.
 - Add rounds with course, date, tee time, roster spots, and notes.
 - Assign rostered golfers to tee-time spots and remove assignments.

@@ -162,6 +162,42 @@
             <section class="panel">
               <div class="section-heading">
                 <div>
+                  <p class="eyebrow">Teams</p>
+                  <h2>Team rosters</h2>
+                </div>
+                <span id="team-status" class="pill"></span>
+              </div>
+
+              <form id="team-form" class="stacked-form">
+                <div class="form-grid two">
+                  <label>
+                    Team name
+                    <input name="name" type="text" placeholder="Birdie Brigade" required />
+                  </label>
+                  <label>
+                    Captain
+                    <select name="captainId" id="team-captain-select"></select>
+                  </label>
+                </div>
+                <div class="form-grid two">
+                  <label>
+                    Team color
+                    <input name="color" type="text" placeholder="Forest green" />
+                  </label>
+                  <label>
+                    Notes
+                    <input name="notes" type="text" placeholder="Match-play pairings, cart group, etc." />
+                  </label>
+                </div>
+                <button type="submit">Create team</button>
+              </form>
+
+              <div id="team-list" class="team-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-heading">
+                <div>
                   <p class="eyebrow">Schedule</p>
                   <h2>Rounds and tee times</h2>
                 </div>

@@ -138,7 +138,8 @@ th {
 .player-actions,
 .round-meta,
 .assignment-form,
-.chip-row {
+.chip-row,
+.team-card-header {
   align-items: center;
   display: flex;
   gap: 0.8rem;
@@ -233,7 +234,7 @@ th {
 .metrics-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 1.25rem;
 }
 
@@ -364,26 +365,35 @@ th {
 }
 
 .player-actions button,
-.round-card button {
+.round-card button,
+.team-card button {
   border-radius: 0.65rem;
   font-size: 0.78rem;
   padding: 0.55rem 0.7rem;
 }
 
-.round-list {
+.round-list,
+.team-list {
   display: grid;
   gap: 0.9rem;
 }
 
-.round-card {
+.round-card,
+.team-card {
   background: #fbfdfb;
   border: 1px solid var(--line);
   border-radius: 1rem;
   padding: 1rem;
 }
 
-.round-card h3 {
+.round-card h3,
+.team-card h3 {
   margin: 0 0 0.25rem;
+}
+
+.team-card-header {
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
 .round-meta {

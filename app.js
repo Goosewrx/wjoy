@@ -48,6 +48,16 @@ const seedData = {
           notes: "Front nine",
           playerIds: ["player-1", "player-2"]
         }
+      ],
+      teams: [
+        {
+          id: "team-1",
+          name: "Birdie Brigade",
+          captainId: "player-1",
+          color: "Forest green",
+          notes: "Opening foursome",
+          playerIds: ["player-1", "player-2"]
+        }
       ]
     }
   ]
@@ -72,13 +82,18 @@ const elements = {
   roundForm: document.querySelector("#round-form"),
   roundList: document.querySelector("#round-list"),
   scheduleStatus: document.querySelector("#schedule-status"),
-  settingsForm: document.querySelector("#settings-form")
+  settingsForm: document.querySelector("#settings-form"),
+  teamCaptainSelect: document.querySelector("#team-captain-select"),
+  teamForm: document.querySelector("#team-form"),
+  teamList: document.querySelector("#team-list"),
+  teamStatus: document.querySelector("#team-status")
 };
 
 elements.leagueForm.addEventListener("submit", createLeague);
 elements.settingsForm.addEventListener("input", updateSettings);
 elements.playerForm.addEventListener("submit", addPlayer);
 elements.roundForm.addEventListener("submit", addRound);
+elements.teamForm.addEventListener("submit", addTeam);
 elements.deleteLeague.addEventListener("click", deleteActiveLeague);
 
 render();
@@ -87,18 +102,47 @@ function loadState() {
   const saved = window.localStorage.getItem(STORAGE_KEY);
 
   if (!saved) {
-    return structuredClone(seedData);
+    return normalizeState(structuredClone(seedData));
   }
 
   try {
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed.leagues)) {
-      return structuredClone(seedData);
+      return normalizeState(structuredClone(seedData));
     }
-    return parsed;
+    return normalizeState(parsed);
   } catch {
-    return structuredClone(seedData);
+    return normalizeState(structuredClone(seedData));
   }
+}
+
+function normalizeState(candidate) {
+  const leagues = candidate.leagues.map((league) => ({
+    ...league,
+    players: Array.isArray(league.players) ? league.players : [],
+    rounds: Array.isArray(league.rounds)
+      ? league.rounds.map((round) => ({
+          ...round,
+          playerIds: Array.isArray(round.playerIds) ? round.playerIds : []
+        }))
+      : [],
+    teams: Array.isArray(league.teams)
+      ? league.teams.map((team) => ({
+          ...team,
+          captainId: team.captainId || "",
+          color: team.color || "",
+          notes: team.notes || "",
+          playerIds: Array.isArray(team.playerIds) ? team.playerIds : []
+        }))
+      : []
+  }));
+
+  return {
+    selectedLeagueId: leagues.some((league) => league.id === candidate.selectedLeagueId)
+      ? candidate.selectedLeagueId
+      : leagues[0]?.id ?? null,
+    leagues
+  };
 }
 
 function saveState() {
@@ -158,7 +202,8 @@ function createLeague(event) {
     rosterLimit: Number(data.rosterLimit),
     dues: Number(data.dues),
     players: [],
-    rounds: []
+    rounds: [],
+    teams: []
   };
 
   state.leagues.push(league);
@@ -166,6 +211,28 @@ function createLeague(event) {
   event.currentTarget.reset();
   event.currentTarget.rosterLimit.value = 24;
   event.currentTarget.dues.value = 120;
+  persistAndRender();
+}
+
+function addTeam(event) {
+  event.preventDefault();
+  const league = activeLeague();
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+
+  if (!league || !data.name.trim()) {
+    return;
+  }
+
+  league.teams.push({
+    id: uid("team"),
+    name: data.name.trim(),
+    captainId: data.captainId,
+    color: data.color.trim(),
+    notes: data.notes.trim(),
+    playerIds: data.captainId ? [data.captainId] : []
+  });
+
+  event.currentTarget.reset();
   persistAndRender();
 }
 
@@ -276,7 +343,7 @@ function render() {
   elements.leagueWorkspace.hidden = false;
   elements.deleteLeague.hidden = false;
   elements.activeLeagueTitle.textContent = league.name;
-  elements.activeLeagueSubtitle.textContent = `${league.season} - ${league.players.length} players - ${league.rounds.length} scheduled rounds`;
+  elements.activeLeagueSubtitle.textContent = `${league.season} - ${league.players.length} players - ${league.teams.length} teams - ${league.rounds.length} scheduled rounds`;
 
   elements.settingsForm.name.value = league.name;
   elements.settingsForm.season.value = league.season;
@@ -285,6 +352,7 @@ function render() {
 
   renderMetrics(league);
   renderPlayers(league);
+  renderTeams(league);
   renderRounds(league);
 }
 
@@ -325,6 +393,7 @@ function renderMetrics(league) {
   const cards = [
     ["Active roster", `${activePlayers}/${league.rosterLimit}`, `${openSpots} open spots`],
     ["Payments", money(totalPaid), `${money(totalDue)} remaining`],
+    ["Teams", league.teams.length, `${teamMemberCount(league)} rostered on teams`],
     ["Rounds", league.rounds.length, nextRound ? `Next: ${formatDate(nextRound.date)}` : "No rounds scheduled"],
     ["Tee time capacity", league.rounds.reduce((sum, round) => sum + Number(round.spots || 0), 0), "Total available round spots"]
   ];
@@ -340,6 +409,7 @@ function renderMetrics(league) {
 
   elements.rosterStatus.textContent = `${openSpots} spots open`;
   elements.scheduleStatus.textContent = `${league.rounds.length} rounds`;
+  elements.teamStatus.textContent = `${league.teams.length} teams`;
 }
 
 function renderPlayers(league) {
@@ -354,11 +424,12 @@ function renderPlayers(league) {
 
   league.players.forEach((player) => {
     const due = amountDue(league, player);
+    const teamName = teamForPlayer(league, player.id)?.name ?? "No team";
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>
         <div class="person-name">${escapeHtml(player.name)}</div>
-        <div class="muted">${escapeHtml(player.notes || "No notes")}</div>
+        <div class="muted">${escapeHtml(teamName)} - ${escapeHtml(player.notes || "No notes")}</div>
       </td>
       <td><span class="status-pill ${player.status.toLowerCase()}">${escapeHtml(player.status)}</span></td>
       <td>
@@ -424,7 +495,143 @@ function removePlayer(league, playerId) {
   league.rounds.forEach((round) => {
     round.playerIds = round.playerIds.filter((id) => id !== playerId);
   });
+  league.teams.forEach((team) => {
+    team.playerIds = team.playerIds.filter((id) => id !== playerId);
+    if (team.captainId === playerId) {
+      team.captainId = team.playerIds[0] ?? "";
+    }
+  });
   persistAndRender();
+}
+
+function renderTeams(league) {
+  renderTeamCaptainOptions(league);
+  elements.teamList.replaceChildren();
+
+  if (!league.teams.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = "No teams yet. Create a team for leagues that play in groups or matches.";
+    elements.teamList.append(empty);
+    return;
+  }
+
+  league.teams.forEach((team) => {
+    const members = team.playerIds
+      .map((id) => league.players.find((player) => player.id === id))
+      .filter(Boolean);
+    const captain = league.players.find((player) => player.id === team.captainId);
+    const card = document.createElement("article");
+    card.className = "team-card";
+    card.innerHTML = `
+      <div class="team-card-header">
+        <div>
+          <h3>${escapeHtml(team.name)}</h3>
+          <p class="muted">${escapeHtml(team.color || "No color")} - ${members.length} members</p>
+        </div>
+        <span class="pill">${captain ? `Captain: ${escapeHtml(captain.name)}` : "No captain"}</span>
+      </div>
+      <p class="muted">${escapeHtml(team.notes || "No notes")}</p>
+    `;
+
+    const chips = document.createElement("div");
+    chips.className = "chip-row";
+
+    if (members.length) {
+      members.forEach((player) => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = player.name;
+        chip.append(actionButton("x", () => removePlayerFromTeam(team, player.id)));
+        chips.append(chip);
+      });
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "muted";
+      empty.textContent = "No team members assigned.";
+      chips.append(empty);
+    }
+
+    card.append(chips);
+    card.append(teamAssignmentControls(league, team));
+    card.append(actionButton("Remove team", () => removeTeam(league, team.id), "danger ghost"));
+    elements.teamList.append(card);
+  });
+}
+
+function renderTeamCaptainOptions(league) {
+  elements.teamCaptainSelect.replaceChildren();
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = league.players.length ? "No captain yet" : "Add players first";
+  elements.teamCaptainSelect.append(placeholder);
+
+  league.players.forEach((player) => {
+    const option = document.createElement("option");
+    option.value = player.id;
+    option.textContent = player.name;
+    elements.teamCaptainSelect.append(option);
+  });
+}
+
+function teamAssignmentControls(league, team) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "assignment-form";
+
+  const label = document.createElement("label");
+  label.textContent = "Add rostered player";
+
+  const select = document.createElement("select");
+  const availablePlayers = league.players.filter((player) => !team.playerIds.includes(player.id));
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = availablePlayers.length ? "Choose player" : "No available players";
+  select.append(placeholder);
+
+  availablePlayers.forEach((player) => {
+    const option = document.createElement("option");
+    option.value = player.id;
+    option.textContent = `${player.name} (${player.status})`;
+    select.append(option);
+  });
+
+  label.append(select);
+  const assignButton = actionButton("Add to team", () => {
+    if (!select.value) {
+      return;
+    }
+    team.playerIds.push(select.value);
+    if (!team.captainId) {
+      team.captainId = select.value;
+    }
+    persistAndRender();
+  });
+  assignButton.disabled = availablePlayers.length === 0;
+
+  wrapper.append(label, assignButton);
+  return wrapper;
+}
+
+function removePlayerFromTeam(team, playerId) {
+  team.playerIds = team.playerIds.filter((id) => id !== playerId);
+  if (team.captainId === playerId) {
+    team.captainId = team.playerIds[0] ?? "";
+  }
+  persistAndRender();
+}
+
+function removeTeam(league, teamId) {
+  league.teams = league.teams.filter((team) => team.id !== teamId);
+  persistAndRender();
+}
+
+function teamForPlayer(league, playerId) {
+  return league.teams.find((team) => team.playerIds.includes(playerId));
+}
+
+function teamMemberCount(league) {
+  return new Set(league.teams.flatMap((team) => team.playerIds)).size;
 }
 
 function renderRounds(league) {
