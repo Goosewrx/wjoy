@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Caddie Prototype</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero card">
+      <p class="eyebrow">Manual-entry golf leveling prototype</p>
+      <div>
+        <h1>System Caddie</h1>
+        <p>Log practice and rounds to complete quests, gain XP, raise stats, and rank up.</p>
+      </div>
+      <button id="reset-data" class="ghost-button" type="button">Reset demo data</button>
+    </section>
+
+    <section class="grid two-columns">
+      <article class="card profile-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Hunter profile</p>
+            <h2 id="player-name">Golfer</h2>
+          </div>
+          <span id="rank-badge" class="rank-badge">Rank E</span>
+        </div>
+        <div class="level-row">
+          <strong id="level-label">Level 1</strong>
+          <span id="xp-label">0 / 100 XP</span>
+        </div>
+        <div class="progress-track" aria-label="Level progress">
+          <div id="level-progress" class="progress-fill"></div>
+        </div>
+        <div id="stats-list" class="stats-list"></div>
+      </article>
+
+      <article class="card system-card">
+        <p class="eyebrow">System message</p>
+        <h2 id="system-title">Quest log ready</h2>
+        <p id="system-message">Choose a drill or round to start earning XP.</p>
+      </article>
+    </section>
+
+    <section class="grid two-columns">
+      <article class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Practice log</p>
+            <h2>Enter a session</h2>
+          </div>
+        </div>
+        <form id="practice-form" class="form-stack">
+          <label>
+            Session type
+            <select name="sessionType">
+              <option value="range">Range</option>
+              <option value="putting">Putting</option>
+              <option value="shortGame">Short game</option>
+              <option value="strategy">Course management</option>
+            </select>
+          </label>
+          <label>
+            Skill focus
+            <select name="skillFocus">
+              <option value="precision">Precision</option>
+              <option value="power">Power</option>
+              <option value="touch">Touch</option>
+              <option value="focus">Focus</option>
+              <option value="strategy">Strategy</option>
+              <option value="tempo">Tempo</option>
+            </select>
+          </label>
+          <div class="form-grid">
+            <label>
+              Reps
+              <input name="reps" type="number" min="1" value="20" required>
+            </label>
+            <label>
+              Successes
+              <input name="successes" type="number" min="0" value="10" required>
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea name="notes" rows="3" placeholder="What were you working on?"></textarea>
+          </label>
+          <button type="submit">Complete practice quest</button>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Round log</p>
+            <h2>Enter scorecard stats</h2>
+          </div>
+        </div>
+        <form id="round-form" class="form-stack">
+          <label>
+            Course
+            <input name="courseName" type="text" value="Local Course" required>
+          </label>
+          <div class="form-grid">
+            <label>
+              Holes
+              <select name="holesPlayed">
+                <option value="9">9</option>
+                <option value="18">18</option>
+              </select>
+            </label>
+            <label>
+              Score
+              <input name="totalScore" type="number" min="1" value="45" required>
+            </label>
+          </div>
+          <div class="form-grid">
+            <label>
+              Fairways hit
+              <input name="fairwaysHit" type="number" min="0" value="3" required>
+            </label>
+            <label>
+              Greens in regulation
+              <input name="greensInRegulation" type="number" min="0" value="2" required>
+            </label>
+          </div>
+          <div class="form-grid">
+            <label>
+              Putts
+              <input name="putts" type="number" min="0" value="18" required>
+            </label>
+            <label>
+              Penalties
+              <input name="penalties" type="number" min="0" value="0" required>
+            </label>
+          </div>
+          <button type="submit">Submit round report</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="grid two-columns">
+      <article class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Active gates</p>
+            <h2>Quests</h2>
+          </div>
+        </div>
+        <div id="quest-list" class="quest-list"></div>
+      </article>
+
+      <article class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Activity history</p>
+            <h2>Recent logs</h2>
+          </div>
+        </div>
+        <ol id="activity-list" class="activity-list"></ol>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

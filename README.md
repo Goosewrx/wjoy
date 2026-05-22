@@ -12,4 +12,13 @@ PS: latest version (0.7.1) you can download from here: https://yadi.sk/d/Fj6PYXp
 
 ## New concept notes
 
-- [Golf leveling app concept](docs/golf-leveling-app.md) - a product and MVP plan for a golf practice app with RPG-style progression built around this repository's Wiimote motion-input capabilities.
+- [Golf leveling app concept](docs/golf-leveling-app.md) - a product and MVP plan for a manual-entry golf practice app with RPG-style progression.
+- [System Caddie prototype](prototypes/system-caddie/README.md) - a dependency-free browser prototype for manually entering practice sessions and rounds.
+
+## Run the manual-entry golf prototype
+
+```bash
+python3 -m http.server 8000 --directory prototypes/system-caddie
+```
+
+Then open `http://localhost:8000`.

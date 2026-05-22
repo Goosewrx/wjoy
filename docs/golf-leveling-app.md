@@ -2,7 +2,7 @@
 
 ## Vision
 
-Build a golf training app that makes practice feel like an RPG progression system. The player receives "system" prompts, completes daily quests, clears course challenges, earns XP, ranks up, and unlocks new skill focuses tied to real golf improvement.
+Build a golf training app that makes practice feel like an RPG progression system. The golfer receives "system" prompts, completes daily quests, logs practice and round results, earns XP, ranks up, and unlocks new skill focuses tied to real golf improvement.
 
 The tone can be inspired by dramatic leveling anime, but the product should use original names, visuals, story, and audio rather than copying protected show assets.
 
@@ -12,24 +12,24 @@ The tone can be inspired by dramatic leveling anime, but the product should use 
 
 System Caddie turns every range session or round into a quest log:
 
-- Hit practice goals to gain XP.
+- Enter practice results and scorecard outcomes to gain XP.
 - Improve driving, approach, short game, putting, consistency, and course management stats.
-- Clear "gates" that are actually focused golf challenges.
+- Clear "gates" that are focused golf challenges.
 - Unlock higher ranks by proving skill across multiple categories.
-- Get dramatic feedback when the app detects a great swing, personal best, streak, or rank-up.
+- Get dramatic feedback when the golfer logs a personal best, finishes a quest, keeps a streak, or earns a rank-up.
 
 ## Core loop
 
 1. **Choose a quest**
-   - Daily: "Land 10 approach shots inside 30 feet."
-   - Training: "Record 20 smooth tempo swings."
+   - Daily: "Log 30 putts from 6 feet."
+   - Training: "Complete 20 range balls with a fairway target selected."
    - Course gate: "Play 3 holes at bogey-or-better with no penalty shots."
-2. **Track real activity**
-   - Manual entry for the first MVP.
-   - Wiimote swing sensing for an on-macOS prototype in this repository.
-   - Future mobile/watch integrations for production.
+2. **Enter real golf activity**
+   - Practice session form for reps, targets, makes, misses, distance bands, and notes.
+   - Round form for hole scores, fairways, greens in regulation, putts, penalties, and recovery shots.
+   - Quick-add buttons for common practice drills.
 3. **Score the attempt**
-   - Award XP for completion, streaks, consistency, and personal-best deltas.
+   - Award XP for completion, streaks, consistency, and personal-best improvements.
    - Award stat XP to the skill category that was practiced.
 4. **Show system feedback**
    - Quest complete.
@@ -37,106 +37,95 @@ System Caddie turns every range session or round into a quest log:
    - Rank promotion trial unlocked.
    - New challenge tier available.
 5. **Progress to harder gates**
-   - Beginner challenges emphasize contact and direction.
-   - Intermediate challenges emphasize dispersion and recovery.
-   - Advanced challenges emphasize scoring under pressure.
+   - Beginner challenges emphasize contact, basic scoring, and repeatable practice habits.
+   - Intermediate challenges emphasize dispersion, up-and-downs, and fewer penalties.
+   - Advanced challenges emphasize scoring under pressure and multi-round consistency.
 
 ## Player stats
 
-| Stat | Golf meaning | Example growth signal |
+| Stat | Golf meaning | Manual growth signal |
 | --- | --- | --- |
-| Power | Driving distance and ball speed | Longer average carry, faster swing reading |
-| Precision | Start line and approach accuracy | Smaller shot dispersion |
-| Touch | Short game and putting feel | Better proximity from short distances |
-| Focus | Consistency under pressure | Fewer blow-up holes, better streaks |
-| Strategy | Course management | Smarter club choice, fewer penalties |
-| Tempo | Repeatable swing rhythm | Stable backswing/downswing timing |
+| Power | Useful distance off the tee | Logged driving distance bands and playable tee shots |
+| Precision | Start line, fairways, and approach accuracy | Fairways hit, greens in regulation, target drill success |
+| Touch | Short game and putting feel | Up-and-down rate, putts made by distance, three-putt avoidance |
+| Focus | Consistency under pressure | Streaks, blow-up-hole avoidance, completed pressure drills |
+| Strategy | Course management | Penalty avoidance, smart layups, conservative target choices |
+| Tempo | Repeatable practice routine | Completed warm-ups, pre-shot routine tracking, consistent drill notes |
 
 ## Rank system
 
-Ranks should represent demonstrated golf capability rather than only total XP.
+Ranks should represent demonstrated golf capability rather than only total XP. Rank checks should use logged evidence from rounds and practice sessions.
 
 | Rank | Theme | Promotion requirement examples |
 | --- | --- | --- |
-| E | New player | Complete onboarding quests |
+| E | New player | Complete onboarding quests and log baseline scores |
 | D | Range regular | Finish 5 practice sessions and log first 9-hole score |
 | C | Course challenger | Complete one gate in driving, approach, short game, and putting |
-| B | Shot maker | Maintain consistency streaks and reduce penalties |
+| B | Shot maker | Maintain consistency streaks and reduce penalties over multiple rounds |
 | A | Tournament ready | Clear pressure challenges with scoring targets |
 | S | Elite | Complete multi-round boss gates and maintain advanced stat thresholds |
 
 ## MVP feature set
 
-Start with a small app that proves the fantasy and the practice loop before adding complex sensors.
+Start with a small manual-entry app that proves the fantasy and the practice loop before considering any sensors or integrations.
 
 ### MVP 1: Quest log and progression
 
 - Player profile with level, rank, XP, and six golf stats.
 - Daily quest list with clear completion criteria.
-- Manual result entry.
+- Manual result entry for practice and rounds.
 - XP calculation and rank-up checks.
 - Activity history.
 - Dramatic "system message" UI copy.
 
-### MVP 2: Wiimote swing prototype in this repo
+### MVP 2: Manual practice session mode
 
-This repository already contains a macOS Wiimote stack. A prototype can use the Wiimote as a practice-club sensor:
-
-- Connect to a Wiimote.
-- Enable accelerometer readings.
-- Detect swing attempts from acceleration peaks.
-- Estimate tempo and repeatability.
-- Feed swing events into the progression engine.
-
-Relevant existing entry points:
-
-- `examples/WATest/MainController.m` shows connection and accelerometer callbacks.
-- `Wiimote/WiimoteDelegate.h` exposes accelerometer gravity and pitch/roll delegate methods.
-- `Wiimote/WiimoteMotionPlusDelegate.h` exposes yaw, roll, and pitch speed reports when MotionPlus is available.
-- `WJoy/MainController.m` shows the current app bootstrap pattern.
-
-### MVP 3: Practice session mode
-
-- Start a timed range session.
+- Start a range, putting, short-game, or course-management session.
 - Pick one skill focus.
-- Track reps, consistency, and completion.
+- Enter reps, successes, misses, target distance, club, and notes.
+- Track completion percentage and quality score.
 - Award XP at the end of the session.
-- Use notifications, LEDs, or vibration for rank-up and quest-complete feedback.
 
-## Suggested architecture for this codebase
+### MVP 3: Scorecard and round logging
 
-The existing project is a legacy Objective-C macOS app. Keep the first prototype small and separate from the joystick-emulation behavior.
+- Log 9-hole or 18-hole rounds.
+- Track score, fairways, greens in regulation, putts, penalties, sand saves, and up-and-downs.
+- Convert round stats into stat XP.
+- Unlock course gates and boss gates based on logged performance.
+
+## Suggested app architecture
+
+This should be designed as a manual-entry product first. The progression engine should not depend on sensors, hardware, or a specific UI framework.
 
 ```
 GolfLeveling/
   GolfPlayerProfile
   GolfQuest
   GolfProgressionEngine
-  GolfSwingEvent
+  GolfPracticeSession
+  GolfRound
+  GolfScorecardHole
   GolfSessionStore
   GolfSystemMessagePresenter
-
-Wiimote swing prototype
-  Wiimote delegate callbacks
-    -> GolfSwingDetector
-    -> GolfProgressionEngine
-    -> notifications / LEDs / session log
 ```
 
 ### Component responsibilities
 
-- **GolfSwingDetector**
-  - Converts accelerometer and MotionPlus updates into swing events.
-  - Emits speed, tempo, repeatability, and confidence values.
 - **GolfProgressionEngine**
   - Owns XP, stat growth, quest completion, level thresholds, and rank checks.
-  - Has no UI or Wiimote dependency.
+  - Accepts logged practice sessions and rounds as input.
+  - Has no UI dependency.
+- **GolfPracticeSession**
+  - Stores session type, skill focus, reps, successes, misses, clubs, distances, and notes.
+  - Calculates completion and quality values for quests.
+- **GolfRound**
+  - Stores course, tee, date, total score, and per-hole stats.
+  - Feeds fairways, greens, putts, penalties, and scoring milestones into progression.
 - **GolfSessionStore**
-  - Persists profiles, quests, and session summaries.
-  - Use plist or JSON first; move to Core Data only when the model becomes richer.
+  - Persists profiles, quests, practice sessions, and round summaries.
+  - Use JSON or a local database depending on the target platform.
 - **GolfSystemMessagePresenter**
-  - Shows quest-complete, level-up, and promotion messages.
-  - Can initially use `UserNotification`.
+  - Shows quest-complete, level-up, personal-best, and promotion messages.
 
 ## Initial data model
 
@@ -157,42 +146,60 @@ GolfQuest
   NSUInteger rewardXP;
   NSDictionary *statRewards;
 
-GolfSwingEvent
-  NSDate *timestamp;
-  CGFloat peakAcceleration;
-  CGFloat tempoScore;
-  CGFloat repeatabilityScore;
-  CGFloat confidence;
+GolfPracticeSession
+  NSDate *date;
+  NSString *sessionType; // range, putting, shortGame, strategy
+  NSString *skillFocus;
+  NSUInteger reps;
+  NSUInteger successes;
+  NSString *club;
+  NSString *distanceBand;
+  NSString *notes;
+
+GolfRound
+  NSDate *date;
+  NSString *courseName;
+  NSUInteger holesPlayed;
+  NSUInteger totalScore;
+  NSUInteger fairwaysHit;
+  NSUInteger greensInRegulation;
+  NSUInteger putts;
+  NSUInteger penalties;
 ```
 
-## Swing scoring prototype
+## Manual-entry scoring prototype
 
-For a Wiimote proof of concept, keep the first swing detector simple:
+Keep the first scoring model understandable to golfers:
 
-1. Maintain a rolling window of accelerometer magnitudes.
-2. Treat a swing candidate as a peak above a calibrated threshold.
-3. Require a cooldown window so one swing is not counted multiple times.
-4. Estimate tempo from time between backswing and downswing peaks.
-5. Score repeatability by comparing recent swing peak and tempo variance.
+1. Award base XP for logging a valid practice session or round.
+2. Award quest XP when a logged result satisfies a quest condition.
+3. Award stat XP based on the session focus or scorecard category.
+4. Award bonus XP for personal bests, streaks, and no-penalty rounds.
+5. Require specific evidence for rank promotions, not just total XP.
 
-This will not measure ball flight, but it can make practice reps and tempo quests feel responsive.
+Example formulas:
+
+- Putting drill XP = base session XP + made-putt bonus + streak bonus.
+- Round XP = holes played XP + scoring milestone XP + penalty-avoidance bonus.
+- Precision XP = fairways hit + greens in regulation + target drill successes.
+- Touch XP = up-and-downs + putting makes + three-putt avoidance.
 
 ## Example quests
 
-- **Daily warm-up:** Record 20 smooth swings.
-- **Tempo trial:** Keep 10 swings within a target tempo band.
-- **Precision gate:** Log 15 shots with intended target and result.
+- **Daily warm-up:** Log 20 putting reps before a round.
+- **Tempo ritual:** Complete 3 practice sessions with a pre-shot routine note.
+- **Precision gate:** Log 15 target-shot attempts and hit at least 8.
 - **Short-game dungeon:** Complete 9 up-and-down attempts.
 - **Boss gate:** Play 3 holes with no double bogeys.
 - **Promotion trial:** Clear one quest from every stat category in the same week.
 
 ## Product risks
 
-- Real shot quality is difficult to infer from a Wiimote alone.
-- A desktop Wiimote prototype is useful for experimentation, but a production golf app likely belongs on mobile and watch devices.
+- Manual entry must be very fast or golfers will stop using it.
+- XP should reward honest improvement without encouraging fake or inflated entries.
 - The fantasy layer should motivate practice without hiding the real training metrics.
 - Progression must reward improvement, not only raw skill, so newer golfers do not feel stuck.
 
 ## Best next implementation step
 
-Create the model-only progression engine first. It can be tested without hardware, then connected to manual entry, then connected to Wiimote swing events.
+Create the model-only progression engine and manual-entry flows first. A golfer should be able to create a profile, choose a quest, enter a practice session or scorecard, and see XP/stat/rank changes immediately.
