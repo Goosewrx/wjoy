@@ -19,8 +19,9 @@ Then open `http://localhost:8000`.
 - Add and remove rostered players.
 - Create league teams and assign rostered players to team rosters.
 - Track player statuses, contact details, notes, and payments.
+- Show a customer-visible active roster and sub directory with contact links.
 - Add rounds with course, date, tee slots, and notes.
-- Treat the active roster as playing every round by default, with per-round substitutions when someone cannot make it.
+- Treat the active roster as playing every round by default, with per-date confirm/cannot-play availability and visible sub requests.
 - Persist data in the browser with `localStorage`.
 
 ## New concept notes

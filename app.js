@@ -46,6 +46,10 @@ const seedData = {
           teeTime: "17:30",
           spots: 16,
           notes: "Front nine",
+          availability: {
+            "player-1": "confirmed",
+            "player-2": "out"
+          },
           substitutions: [
             {
               outPlayerId: "player-2",
@@ -83,6 +87,8 @@ const elements = {
   metrics: document.querySelector("#metrics"),
   playerForm: document.querySelector("#player-form"),
   playerTable: document.querySelector("#player-table"),
+  publicRosterList: document.querySelector("#public-roster-list"),
+  publicSubList: document.querySelector("#public-sub-list"),
   rosterStatus: document.querySelector("#roster-status"),
   roundForm: document.querySelector("#round-form"),
   roundList: document.querySelector("#round-list"),
@@ -128,6 +134,7 @@ function normalizeState(candidate) {
     rounds: Array.isArray(league.rounds)
       ? league.rounds.map((round) => ({
           ...round,
+          availability: round.availability && typeof round.availability === "object" ? round.availability : {},
           playerIds: Array.isArray(round.playerIds) ? round.playerIds : [],
           substitutions: Array.isArray(round.substitutions)
             ? round.substitutions.filter((substitution) => substitution.outPlayerId && substitution.subPlayerId)
@@ -303,6 +310,7 @@ function addRound(event) {
     teeTime: data.teeTime,
     spots: Number(data.spots) || 1,
     notes: data.notes.trim(),
+    availability: {},
     substitutions: []
   });
 
@@ -359,6 +367,7 @@ function render() {
   elements.settingsForm.dues.value = league.dues;
 
   renderMetrics(league);
+  renderPublicRosters(league);
   renderPlayers(league);
   renderTeams(league);
   renderRounds(league);
@@ -502,6 +511,7 @@ function removePlayer(league, playerId) {
   league.players = league.players.filter((player) => player.id !== playerId);
   league.rounds.forEach((round) => {
     round.playerIds = Array.isArray(round.playerIds) ? round.playerIds.filter((id) => id !== playerId) : [];
+    delete roundAvailability(round)[playerId];
     round.substitutions = roundSubstitutions(round).filter(
       (substitution) => substitution.outPlayerId !== playerId && substitution.subPlayerId !== playerId
     );
@@ -513,6 +523,38 @@ function removePlayer(league, playerId) {
     }
   });
   persistAndRender();
+}
+
+function renderPublicRosters(league) {
+  renderDirectoryList(elements.publicRosterList, activeRosterPlayers(league), "No roster players yet.");
+  renderDirectoryList(elements.publicSubList, subRosterPlayers(league), "No subs listed yet.");
+}
+
+function renderDirectoryList(container, players, emptyText) {
+  container.replaceChildren();
+
+  if (!players.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = emptyText;
+    container.append(empty);
+    return;
+  }
+
+  players.forEach((player) => {
+    const card = document.createElement("article");
+    card.className = "directory-card";
+
+    const details = document.createElement("div");
+    details.innerHTML = `
+      <strong>${escapeHtml(player.name)}</strong>
+      <span>${escapeHtml(player.status)}</span>
+      <small>${escapeHtml(player.notes || "No notes")}</small>
+    `;
+
+    card.append(details, contactLinks(player));
+    container.append(card);
+  });
 }
 
 function renderTeams(league) {
@@ -662,6 +704,8 @@ function renderRounds(league) {
       const activePlayers = activeRosterPlayers(league);
       const playingPlayers = roundPlayingPlayers(league, round);
       const substitutions = roundSubstitutions(round);
+      const outPlayers = roundOutPlayers(league, round);
+      const confirmedCount = activePlayers.filter((player) => availabilityForPlayer(round, player.id) === "confirmed").length;
       const card = document.createElement("article");
       card.className = "round-card";
       card.innerHTML = `
@@ -670,6 +714,8 @@ function renderRounds(league) {
           <span>${formatDate(round.date)}</span>
           <span>${formatTime(round.teeTime)}</span>
           <span>${round.spots} tee slots</span>
+          <span>${confirmedCount} confirmed</span>
+          <span>${outPlayers.length} need subs</span>
           <span>${playingPlayers.length} expected players</span>
           <span>${substitutions.length} substitutions</span>
         </div>
@@ -691,6 +737,49 @@ function renderRounds(league) {
         empty.className = "muted";
         empty.textContent = "No active roster players yet.";
         chips.append(empty);
+      }
+
+      const availabilityBoard = document.createElement("div");
+      availabilityBoard.className = "availability-board";
+      const availabilityTitle = document.createElement("h4");
+      availabilityTitle.textContent = "Player availability";
+      availabilityBoard.append(availabilityTitle);
+
+      if (activePlayers.length) {
+        activePlayers.forEach((player) => {
+          availabilityBoard.append(roundAvailabilityRow(round, player));
+        });
+      } else {
+        const empty = document.createElement("p");
+        empty.className = "empty-copy";
+        empty.textContent = "Add active roster players so they can confirm or decline this date.";
+        availabilityBoard.append(empty);
+      }
+
+      const openRequests = document.createElement("div");
+      openRequests.className = "open-request-list";
+      const requestTitle = document.createElement("h4");
+      requestTitle.textContent = "Open sub requests";
+      openRequests.append(requestTitle);
+
+      const outWithoutRecordedSub = outPlayers.filter(
+        (player) => !substitutions.some((substitution) => substitution.outPlayerId === player.id)
+      );
+      if (outWithoutRecordedSub.length) {
+        outWithoutRecordedSub.forEach((player) => {
+          const row = document.createElement("div");
+          row.className = "substitution-row attention";
+          const message = document.createElement("span");
+          message.innerHTML = `<strong>${escapeHtml(player.name)}</strong> cannot play. Subs can see this opening; ${escapeHtml(player.name)} can reach out from the sub list.`;
+          row.append(message);
+          openRequests.append(row);
+        });
+        openRequests.append(roundSubContactList(league));
+      } else {
+        const empty = document.createElement("p");
+        empty.className = "empty-copy";
+        empty.textContent = "No open sub requests for this date.";
+        openRequests.append(empty);
       }
 
       const substitutionList = document.createElement("div");
@@ -717,8 +806,10 @@ function renderRounds(league) {
       }
 
       card.append(chips);
+      card.append(availabilityBoard);
+      card.append(openRequests);
       card.append(substitutionList);
-      card.append(roundSubstitutionControls(league, round, activePlayers));
+      card.append(roundSubstitutionControls(league, round));
       card.append(actionButton("Remove round", () => {
         league.rounds = league.rounds.filter((item) => item.id !== round.id);
         persistAndRender();
@@ -727,19 +818,66 @@ function renderRounds(league) {
     });
 }
 
-function roundSubstitutionControls(league, round, activePlayers) {
+function roundAvailabilityRow(round, player) {
+  const row = document.createElement("div");
+  row.className = "availability-row";
+  const status = availabilityForPlayer(round, player.id);
+  const statusText = status === "confirmed" ? "Confirmed" : status === "out" ? "Cannot play" : "Assumed in";
+
+  const details = document.createElement("div");
+  details.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span class="status-pill ${status}">${statusText}</span>`;
+
+  const actions = document.createElement("div");
+  actions.className = "availability-actions";
+  const confirmButton = actionButton("Can play", () => setRoundAvailability(round, player.id, "confirmed"));
+  const outButton = actionButton("Cannot play", () => setRoundAvailability(round, player.id, "out"), "danger ghost");
+  confirmButton.disabled = status === "confirmed";
+  outButton.disabled = status === "out";
+  actions.append(confirmButton, outButton);
+
+  row.append(details, actions);
+  return row;
+}
+
+function roundSubContactList(league) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "sub-contact-list";
+  const players = subRosterPlayers(league);
+
+  if (!players.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = "No subs are listed yet.";
+    wrapper.append(empty);
+    return wrapper;
+  }
+
+  players.forEach((player) => {
+    const card = document.createElement("article");
+    card.className = "directory-card compact";
+    const details = document.createElement("div");
+    details.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.status)}</span>`;
+    card.append(details, contactLinks(player));
+    wrapper.append(card);
+  });
+
+  return wrapper;
+}
+
+function roundSubstitutionControls(league, round) {
   const wrapper = document.createElement("div");
   wrapper.className = "assignment-form";
 
   const outLabel = document.createElement("label");
   outLabel.textContent = "Player who cannot make it";
   const outSelect = document.createElement("select");
-  const playersWithoutSub = activePlayers.filter(
+  const outPlayers = roundOutPlayers(league, round);
+  const playersWithoutSub = outPlayers.filter(
     (player) => !roundSubstitutions(round).some((substitution) => substitution.outPlayerId === player.id)
   );
   const outPlaceholder = document.createElement("option");
   outPlaceholder.value = "";
-  outPlaceholder.textContent = playersWithoutSub.length ? "Choose roster player" : "No roster players available";
+  outPlaceholder.textContent = playersWithoutSub.length ? "Choose open request" : "No open requests";
   outSelect.append(outPlaceholder);
 
   playersWithoutSub.forEach((player) => {
@@ -787,9 +925,36 @@ function activeRosterPlayers(league) {
   return league.players.filter((player) => player.status === "Active");
 }
 
+function subRosterPlayers(league) {
+  return league.players.filter((player) => player.status !== "Active");
+}
+
 function substitutePlayers(league, round) {
   const usedSubIds = new Set(roundSubstitutions(round).map((substitution) => substitution.subPlayerId));
-  return league.players.filter((player) => player.status !== "Active" && !usedSubIds.has(player.id));
+  return subRosterPlayers(league).filter((player) => !usedSubIds.has(player.id));
+}
+
+function roundAvailability(round) {
+  if (!round.availability || typeof round.availability !== "object") {
+    round.availability = {};
+  }
+  return round.availability;
+}
+
+function availabilityForPlayer(round, playerId) {
+  return roundAvailability(round)[playerId] ?? "assumed";
+}
+
+function setRoundAvailability(round, playerId, status) {
+  roundAvailability(round)[playerId] = status;
+  if (status === "confirmed") {
+    removeRoundSubstitution(round, playerId, false);
+  }
+  persistAndRender();
+}
+
+function roundOutPlayers(league, round) {
+  return activeRosterPlayers(league).filter((player) => availabilityForPlayer(round, player.id) === "out");
 }
 
 function roundSubstitutions(round) {
@@ -801,7 +966,10 @@ function roundSubstitutions(round) {
 
 function roundPlayingPlayers(league, round) {
   const substitutions = roundSubstitutions(round);
-  const outIds = new Set(substitutions.map((substitution) => substitution.outPlayerId));
+  const outIds = new Set([
+    ...roundOutPlayers(league, round).map((player) => player.id),
+    ...substitutions.map((substitution) => substitution.outPlayerId)
+  ]);
   const subIds = new Set(substitutions.map((substitution) => substitution.subPlayerId));
   const players = activeRosterPlayers(league).filter((player) => !outIds.has(player.id));
 
@@ -815,13 +983,43 @@ function roundPlayingPlayers(league, round) {
   return players;
 }
 
-function removeRoundSubstitution(round, outPlayerId) {
+function removeRoundSubstitution(round, outPlayerId, shouldRender = true) {
   round.substitutions = roundSubstitutions(round).filter((substitution) => substitution.outPlayerId !== outPlayerId);
-  persistAndRender();
+  if (shouldRender) {
+    persistAndRender();
+  }
 }
 
 function playerById(league, playerId) {
   return league.players.find((player) => player.id === playerId);
+}
+
+function contactLinks(player) {
+  const links = document.createElement("div");
+  links.className = "contact-links";
+
+  if (player.email) {
+    const email = document.createElement("a");
+    email.href = `mailto:${player.email}`;
+    email.textContent = "Email";
+    links.append(email);
+  }
+
+  if (player.phone) {
+    const phone = document.createElement("a");
+    phone.href = `tel:${player.phone}`;
+    phone.textContent = "Call";
+    links.append(phone);
+  }
+
+  if (!links.children.length) {
+    const empty = document.createElement("span");
+    empty.className = "muted";
+    empty.textContent = "No contact";
+    links.append(empty);
+  }
+
+  return links;
 }
 
 function actionButton(label, onClick, className = "ghost") {
