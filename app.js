@@ -46,7 +46,12 @@ const seedData = {
           teeTime: "17:30",
           spots: 16,
           notes: "Front nine",
-          playerIds: ["player-1", "player-2"]
+          substitutions: [
+            {
+              outPlayerId: "player-2",
+              subPlayerId: "player-3"
+            }
+          ]
         }
       ],
       teams: [
@@ -123,7 +128,10 @@ function normalizeState(candidate) {
     rounds: Array.isArray(league.rounds)
       ? league.rounds.map((round) => ({
           ...round,
-          playerIds: Array.isArray(round.playerIds) ? round.playerIds : []
+          playerIds: Array.isArray(round.playerIds) ? round.playerIds : [],
+          substitutions: Array.isArray(round.substitutions)
+            ? round.substitutions.filter((substitution) => substitution.outPlayerId && substitution.subPlayerId)
+            : []
         }))
       : [],
     teams: Array.isArray(league.teams)
@@ -295,7 +303,7 @@ function addRound(event) {
     teeTime: data.teeTime,
     spots: Number(data.spots) || 1,
     notes: data.notes.trim(),
-    playerIds: []
+    substitutions: []
   });
 
   event.currentTarget.reset();
@@ -395,7 +403,7 @@ function renderMetrics(league) {
     ["Payments", money(totalPaid), `${money(totalDue)} remaining`],
     ["Teams", league.teams.length, `${teamMemberCount(league)} rostered on teams`],
     ["Rounds", league.rounds.length, nextRound ? `Next: ${formatDate(nextRound.date)}` : "No rounds scheduled"],
-    ["Tee time capacity", league.rounds.reduce((sum, round) => sum + Number(round.spots || 0), 0), "Total available round spots"]
+    ["Round starters", league.rounds.reduce((sum, round) => sum + roundPlayingPlayers(league, round).length, 0), "Roster players scheduled by default"]
   ];
 
   elements.metrics.replaceChildren();
@@ -493,7 +501,10 @@ function nextStatus(status) {
 function removePlayer(league, playerId) {
   league.players = league.players.filter((player) => player.id !== playerId);
   league.rounds.forEach((round) => {
-    round.playerIds = round.playerIds.filter((id) => id !== playerId);
+    round.playerIds = Array.isArray(round.playerIds) ? round.playerIds.filter((id) => id !== playerId) : [];
+    round.substitutions = roundSubstitutions(round).filter(
+      (substitution) => substitution.outPlayerId !== playerId && substitution.subPlayerId !== playerId
+    );
   });
   league.teams.forEach((team) => {
     team.playerIds = team.playerIds.filter((id) => id !== playerId);
@@ -648,10 +659,9 @@ function renderRounds(league) {
   [...league.rounds]
     .sort((a, b) => `${a.date}${a.teeTime}`.localeCompare(`${b.date}${b.teeTime}`))
     .forEach((round) => {
-      const assignedPlayers = round.playerIds
-        .map((id) => league.players.find((player) => player.id === id))
-        .filter(Boolean);
-      const openSpots = Math.max(0, Number(round.spots || 0) - assignedPlayers.length);
+      const activePlayers = activeRosterPlayers(league);
+      const playingPlayers = roundPlayingPlayers(league, round);
+      const substitutions = roundSubstitutions(round);
       const card = document.createElement("article");
       card.className = "round-card";
       card.innerHTML = `
@@ -659,7 +669,9 @@ function renderRounds(league) {
         <div class="round-meta">
           <span>${formatDate(round.date)}</span>
           <span>${formatTime(round.teeTime)}</span>
-          <span>${assignedPlayers.length}/${round.spots} spots filled</span>
+          <span>${round.spots} tee slots</span>
+          <span>${playingPlayers.length} expected players</span>
+          <span>${substitutions.length} substitutions</span>
         </div>
         <p class="muted">${escapeHtml(round.notes || "No notes")}</p>
       `;
@@ -667,26 +679,46 @@ function renderRounds(league) {
       const chips = document.createElement("div");
       chips.className = "chip-row";
 
-      if (assignedPlayers.length) {
-        assignedPlayers.forEach((player) => {
+      if (playingPlayers.length) {
+        playingPlayers.forEach((player) => {
           const chip = document.createElement("span");
           chip.className = "chip";
           chip.textContent = player.name;
-          chip.append(actionButton("x", () => {
-            round.playerIds = round.playerIds.filter((id) => id !== player.id);
-            persistAndRender();
-          }));
           chips.append(chip);
         });
       } else {
         const empty = document.createElement("span");
         empty.className = "muted";
-        empty.textContent = "No players assigned.";
+        empty.textContent = "No active roster players yet.";
         chips.append(empty);
       }
 
+      const substitutionList = document.createElement("div");
+      substitutionList.className = "substitution-list";
+      if (substitutions.length) {
+        substitutions.forEach((substitution) => {
+          const outPlayer = playerById(league, substitution.outPlayerId);
+          const subPlayer = playerById(league, substitution.subPlayerId);
+          if (!outPlayer || !subPlayer) {
+            return;
+          }
+
+          const row = document.createElement("div");
+          row.className = "substitution-row";
+          row.innerHTML = `<span><strong>${escapeHtml(subPlayer.name)}</strong> subs for ${escapeHtml(outPlayer.name)}</span>`;
+          row.append(actionButton("Remove", () => removeRoundSubstitution(round, substitution.outPlayerId), "danger ghost"));
+          substitutionList.append(row);
+        });
+      } else {
+        const empty = document.createElement("p");
+        empty.className = "empty-copy";
+        empty.textContent = "Everyone on the active roster is expected to play.";
+        substitutionList.append(empty);
+      }
+
       card.append(chips);
-      card.append(roundAssignmentControls(league, round, openSpots));
+      card.append(substitutionList);
+      card.append(roundSubstitutionControls(league, round, activePlayers));
       card.append(actionButton("Remove round", () => {
         league.rounds = league.rounds.filter((item) => item.id !== round.id);
         persistAndRender();
@@ -695,39 +727,101 @@ function renderRounds(league) {
     });
 }
 
-function roundAssignmentControls(league, round, openSpots) {
+function roundSubstitutionControls(league, round, activePlayers) {
   const wrapper = document.createElement("div");
   wrapper.className = "assignment-form";
 
-  const label = document.createElement("label");
-  label.textContent = "Assign rostered golfer";
+  const outLabel = document.createElement("label");
+  outLabel.textContent = "Player who cannot make it";
+  const outSelect = document.createElement("select");
+  const playersWithoutSub = activePlayers.filter(
+    (player) => !roundSubstitutions(round).some((substitution) => substitution.outPlayerId === player.id)
+  );
+  const outPlaceholder = document.createElement("option");
+  outPlaceholder.value = "";
+  outPlaceholder.textContent = playersWithoutSub.length ? "Choose roster player" : "No roster players available";
+  outSelect.append(outPlaceholder);
 
-  const select = document.createElement("select");
-  const availablePlayers = league.players.filter((player) => !round.playerIds.includes(player.id));
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = availablePlayers.length ? "Choose player" : "No available players";
-  select.append(placeholder);
+  playersWithoutSub.forEach((player) => {
+    const option = document.createElement("option");
+    option.value = player.id;
+    option.textContent = player.name;
+    outSelect.append(option);
+  });
 
-  availablePlayers.forEach((player) => {
+  const subLabel = document.createElement("label");
+  subLabel.textContent = "Substitute";
+  const subSelect = document.createElement("select");
+  const substitutes = substitutePlayers(league, round);
+  const subPlaceholder = document.createElement("option");
+  subPlaceholder.value = "";
+  subPlaceholder.textContent = substitutes.length ? "Choose sub" : "No substitutes available";
+  subSelect.append(subPlaceholder);
+
+  substitutes.forEach((player) => {
     const option = document.createElement("option");
     option.value = player.id;
     option.textContent = `${player.name} (${player.status})`;
-    select.append(option);
+    subSelect.append(option);
   });
 
-  label.append(select);
-  const assignButton = actionButton(openSpots > 0 ? "Assign" : "Full", () => {
-    if (!select.value || openSpots <= 0) {
+  outLabel.append(outSelect);
+  subLabel.append(subSelect);
+  const assignButton = actionButton("Add sub", () => {
+    if (!outSelect.value || !subSelect.value) {
       return;
     }
-    round.playerIds.push(select.value);
+    round.substitutions.push({
+      outPlayerId: outSelect.value,
+      subPlayerId: subSelect.value
+    });
     persistAndRender();
   });
-  assignButton.disabled = openSpots <= 0 || availablePlayers.length === 0;
+  assignButton.disabled = playersWithoutSub.length === 0 || substitutes.length === 0;
 
-  wrapper.append(label, assignButton);
+  wrapper.append(outLabel, subLabel, assignButton);
   return wrapper;
+}
+
+function activeRosterPlayers(league) {
+  return league.players.filter((player) => player.status === "Active");
+}
+
+function substitutePlayers(league, round) {
+  const usedSubIds = new Set(roundSubstitutions(round).map((substitution) => substitution.subPlayerId));
+  return league.players.filter((player) => player.status !== "Active" && !usedSubIds.has(player.id));
+}
+
+function roundSubstitutions(round) {
+  if (!Array.isArray(round.substitutions)) {
+    round.substitutions = [];
+  }
+  return round.substitutions;
+}
+
+function roundPlayingPlayers(league, round) {
+  const substitutions = roundSubstitutions(round);
+  const outIds = new Set(substitutions.map((substitution) => substitution.outPlayerId));
+  const subIds = new Set(substitutions.map((substitution) => substitution.subPlayerId));
+  const players = activeRosterPlayers(league).filter((player) => !outIds.has(player.id));
+
+  subIds.forEach((id) => {
+    const player = playerById(league, id);
+    if (player && !players.some((existing) => existing.id === id)) {
+      players.push(player);
+    }
+  });
+
+  return players;
+}
+
+function removeRoundSubstitution(round, outPlayerId) {
+  round.substitutions = roundSubstitutions(round).filter((substitution) => substitution.outPlayerId !== outPlayerId);
+  persistAndRender();
+}
+
+function playerById(league, playerId) {
+  return league.players.find((player) => player.id === playerId);
 }
 
 function actionButton(label, onClick, className = "ghost") {

@@ -19,8 +19,8 @@ Then open `http://localhost:8000`.
 - Add and remove rostered players.
 - Create league teams and assign rostered players to team rosters.
 - Track player statuses, contact details, notes, and payments.
-- Add rounds with course, date, tee time, roster spots, and notes.
-- Assign rostered golfers to tee-time spots and remove assignments.
+- Add rounds with course, date, tee slots, and notes.
+- Treat the active roster as playing every round by default, with per-round substitutions when someone cannot make it.
 - Persist data in the browser with `localStorage`.
 
 ## New concept notes
