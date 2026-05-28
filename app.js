@@ -328,8 +328,9 @@ function addPlayer(event) {
 
 async function importRoster(event) {
   event.preventDefault();
+  const form = event.currentTarget;
   const league = activeLeague();
-  const file = event.currentTarget.rosterFile.files[0];
+  const file = form.rosterFile.files[0];
 
   if (!league || !file) {
     return;
@@ -397,7 +398,7 @@ async function importRoster(event) {
       throw new Error("No players were imported. Make sure the file has a name or player column.");
     }
 
-    event.currentTarget.reset();
+    form.reset();
     persistAndRender();
     elements.rosterImportStatus.textContent = `Imported ${importedCount} players. Payments were set as paid or unpaid only.`;
   } catch (error) {
