@@ -417,12 +417,14 @@ th {
 .directory-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .directory-grid h3,
 .availability-board h4,
-.open-request-list h4 {
+.open-request-list h4,
+.team-lineup-card h4,
+.team-availability-group h5 {
   margin: 0 0 0.75rem;
 }
 
@@ -436,6 +438,10 @@ th {
 .directory-card.compact {
   align-items: center;
   padding: 0.65rem;
+}
+
+.directory-card.team-directory-card {
+  flex-direction: column;
 }
 
 .directory-card strong,
@@ -478,6 +484,24 @@ th {
   border-top: 1px solid var(--line);
   margin-top: 1rem;
   padding-top: 1rem;
+}
+
+.round-team-lineups {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.team-lineup-card,
+.team-availability-group {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+}
+
+.team-availability-group {
+  margin-top: 0.75rem;
 }
 
 .availability-row {
@@ -580,6 +604,7 @@ th {
 
   .metrics-grid,
   .directory-grid,
+  .round-team-lineups,
   .form-grid.four {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -596,6 +621,7 @@ th {
   .form-grid.three,
   .form-grid.four,
   .directory-grid,
+  .round-team-lineups,
   .metrics-grid {
     grid-template-columns: 1fr;
   }

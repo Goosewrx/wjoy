@@ -89,6 +89,7 @@ const elements = {
   playerTable: document.querySelector("#player-table"),
   publicRosterList: document.querySelector("#public-roster-list"),
   publicSubList: document.querySelector("#public-sub-list"),
+  publicTeamList: document.querySelector("#public-team-list"),
   rosterStatus: document.querySelector("#roster-status"),
   roundForm: document.querySelector("#round-form"),
   roundList: document.querySelector("#round-list"),
@@ -527,6 +528,7 @@ function removePlayer(league, playerId) {
 
 function renderPublicRosters(league) {
   renderDirectoryList(elements.publicRosterList, activeRosterPlayers(league), "No roster players yet.");
+  renderPublicScrambleTeams(league);
   renderDirectoryList(elements.publicSubList, subRosterPlayers(league), "No subs listed yet.");
 }
 
@@ -554,6 +556,51 @@ function renderDirectoryList(container, players, emptyText) {
 
     card.append(details, contactLinks(player));
     container.append(card);
+  });
+}
+
+function renderPublicScrambleTeams(league) {
+  elements.publicTeamList.replaceChildren();
+
+  if (!league.teams.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = "No set scramble teams yet.";
+    elements.publicTeamList.append(empty);
+    return;
+  }
+
+  league.teams.forEach((team) => {
+    const members = teamMembers(league, team).filter((player) => player.status === "Active");
+    const captain = playerById(league, team.captainId);
+    const card = document.createElement("article");
+    card.className = "directory-card team-directory-card";
+
+    const details = document.createElement("div");
+    details.innerHTML = `
+      <strong>${escapeHtml(team.name)}</strong>
+      <span>${captain ? `Captain: ${escapeHtml(captain.name)}` : "No captain set"}</span>
+      <small>${escapeHtml(team.color || "No color")} - ${members.length} roster players</small>
+    `;
+
+    const chips = document.createElement("div");
+    chips.className = "chip-row";
+    if (members.length) {
+      members.forEach((player) => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = player.name;
+        chips.append(chip);
+      });
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "muted";
+      empty.textContent = "No active members.";
+      chips.append(empty);
+    }
+
+    card.append(details, chips);
+    elements.publicTeamList.append(card);
   });
 }
 
@@ -683,6 +730,34 @@ function teamForPlayer(league, playerId) {
   return league.teams.find((team) => team.playerIds.includes(playerId));
 }
 
+function teamMembers(league, team) {
+  return team.playerIds.map((id) => playerById(league, id)).filter(Boolean);
+}
+
+function teamNameForPlayer(league, playerId) {
+  return teamForPlayer(league, playerId)?.name ?? "Unassigned scramble team";
+}
+
+function scrambleTeamGroups(league) {
+  const assignedIds = new Set(league.teams.flatMap((team) => team.playerIds));
+  const groups = league.teams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    players: teamMembers(league, team).filter((player) => player.status === "Active")
+  }));
+  const unassignedPlayers = activeRosterPlayers(league).filter((player) => !assignedIds.has(player.id));
+
+  if (unassignedPlayers.length) {
+    groups.push({
+      id: "unassigned",
+      name: "Unassigned roster players",
+      players: unassignedPlayers
+    });
+  }
+
+  return groups.filter((group) => group.players.length);
+}
+
 function teamMemberCount(league) {
   return new Set(league.teams.flatMap((team) => team.playerIds)).size;
 }
@@ -722,33 +797,16 @@ function renderRounds(league) {
         <p class="muted">${escapeHtml(round.notes || "No notes")}</p>
       `;
 
-      const chips = document.createElement("div");
-      chips.className = "chip-row";
-
-      if (playingPlayers.length) {
-        playingPlayers.forEach((player) => {
-          const chip = document.createElement("span");
-          chip.className = "chip";
-          chip.textContent = player.name;
-          chips.append(chip);
-        });
-      } else {
-        const empty = document.createElement("span");
-        empty.className = "muted";
-        empty.textContent = "No active roster players yet.";
-        chips.append(empty);
-      }
+      const lineups = roundTeamLineups(league, playingPlayers);
 
       const availabilityBoard = document.createElement("div");
       availabilityBoard.className = "availability-board";
       const availabilityTitle = document.createElement("h4");
-      availabilityTitle.textContent = "Player availability";
+      availabilityTitle.textContent = "Player availability by scramble team";
       availabilityBoard.append(availabilityTitle);
 
       if (activePlayers.length) {
-        activePlayers.forEach((player) => {
-          availabilityBoard.append(roundAvailabilityRow(round, player));
-        });
+        renderRoundAvailabilityGroups(league, round).forEach((group) => availabilityBoard.append(group));
       } else {
         const empty = document.createElement("p");
         empty.className = "empty-copy";
@@ -770,7 +828,8 @@ function renderRounds(league) {
           const row = document.createElement("div");
           row.className = "substitution-row attention";
           const message = document.createElement("span");
-          message.innerHTML = `<strong>${escapeHtml(player.name)}</strong> cannot play. Subs can see this opening; ${escapeHtml(player.name)} can reach out from the sub list.`;
+          const teamName = teamNameForPlayer(league, player.id);
+          message.innerHTML = `<strong>${escapeHtml(player.name)}</strong> cannot play for ${escapeHtml(teamName)}. Subs can see this opening; ${escapeHtml(player.name)} can reach out from the sub list.`;
           row.append(message);
           openRequests.append(row);
         });
@@ -794,7 +853,7 @@ function renderRounds(league) {
 
           const row = document.createElement("div");
           row.className = "substitution-row";
-          row.innerHTML = `<span><strong>${escapeHtml(subPlayer.name)}</strong> subs for ${escapeHtml(outPlayer.name)}</span>`;
+          row.innerHTML = `<span><strong>${escapeHtml(subPlayer.name)}</strong> subs for ${escapeHtml(outPlayer.name)} on ${escapeHtml(teamNameForPlayer(league, outPlayer.id))}</span>`;
           row.append(actionButton("Remove", () => removeRoundSubstitution(round, substitution.outPlayerId), "danger ghost"));
           substitutionList.append(row);
         });
@@ -805,7 +864,7 @@ function renderRounds(league) {
         substitutionList.append(empty);
       }
 
-      card.append(chips);
+      card.append(lineups);
       card.append(availabilityBoard);
       card.append(openRequests);
       card.append(substitutionList);
@@ -837,6 +896,87 @@ function roundAvailabilityRow(round, player) {
 
   row.append(details, actions);
   return row;
+}
+
+function renderRoundAvailabilityGroups(league, round) {
+  return scrambleTeamGroups(league).map((group) => {
+    const section = document.createElement("section");
+    section.className = "team-availability-group";
+
+    const title = document.createElement("h5");
+    title.textContent = group.name;
+    section.append(title);
+
+    group.players.forEach((player) => {
+      section.append(roundAvailabilityRow(round, player));
+    });
+
+    return section;
+  });
+}
+
+function roundTeamLineups(league, playingPlayers) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "round-team-lineups";
+
+  if (!playingPlayers.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No active roster players yet.";
+    wrapper.append(empty);
+    return wrapper;
+  }
+
+  const playingIds = new Set(playingPlayers.map((player) => player.id));
+  scrambleTeamGroups(league).forEach((group) => {
+    const card = document.createElement("article");
+    card.className = "team-lineup-card";
+
+    const title = document.createElement("h4");
+    title.textContent = group.name;
+    card.append(title);
+
+    const chips = document.createElement("div");
+    chips.className = "chip-row";
+    const playingMembers = group.players.filter((player) => playingIds.has(player.id));
+
+    if (playingMembers.length) {
+      playingMembers.forEach((player) => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = player.name;
+        chips.append(chip);
+      });
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "muted";
+      empty.textContent = "No players available.";
+      chips.append(empty);
+    }
+
+    card.append(chips);
+    wrapper.append(card);
+  });
+
+  const subOnlyPlayers = playingPlayers.filter((player) => !teamForPlayer(league, player.id));
+  if (subOnlyPlayers.length) {
+    const card = document.createElement("article");
+    card.className = "team-lineup-card";
+    const title = document.createElement("h4");
+    title.textContent = "Subs filling in";
+    const chips = document.createElement("div");
+    chips.className = "chip-row";
+    subOnlyPlayers.forEach((player) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = player.name;
+      chips.append(chip);
+    });
+    card.append(title, chips);
+    wrapper.append(card);
+  }
+
+  return wrapper;
 }
 
 function roundSubContactList(league) {
@@ -883,7 +1023,7 @@ function roundSubstitutionControls(league, round) {
   playersWithoutSub.forEach((player) => {
     const option = document.createElement("option");
     option.value = player.id;
-    option.textContent = player.name;
+    option.textContent = `${player.name} (${teamNameForPlayer(league, player.id)})`;
     outSelect.append(option);
   });
 
