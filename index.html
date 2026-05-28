@@ -17,7 +17,7 @@
           </div>
         </div>
 
-        <section class="panel compact">
+        <section class="panel compact manager-only">
           <h2>Add league</h2>
           <form id="league-form" class="stacked-form">
             <label>
@@ -58,7 +58,11 @@
             <h2 id="active-league-title">Create a league to get started</h2>
             <p id="active-league-subtitle">Track rosters, dues, schedule, tee times, and available spots in one place.</p>
           </div>
-          <button id="delete-league" type="button" class="danger ghost" hidden>Delete league</button>
+          <div class="hero-actions">
+            <div id="auth-status" class="auth-status" hidden></div>
+            <button id="logout-button" type="button" class="ghost" hidden>Log out</button>
+            <button id="delete-league" type="button" class="danger ghost manager-only" hidden>Delete league</button>
+          </div>
         </section>
 
         <section id="empty-state" class="empty-state">
@@ -66,8 +70,50 @@
           <p>Create your first golf league from the sidebar to open the hub.</p>
         </section>
 
+        <section id="auth-panel" class="panel auth-panel" hidden>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">League access</p>
+              <h2>Sign in to view this league</h2>
+            </div>
+            <span class="pill">Roster email required</span>
+          </div>
+          <div class="auth-grid">
+            <form id="member-login-form" class="stacked-form">
+              <h3>Member login</h3>
+              <p class="muted">Use the email address listed on this league roster.</p>
+              <label>
+                Email address
+                <input name="email" type="email" placeholder="player@example.com" required />
+              </label>
+              <button type="submit">Enter league portal</button>
+            </form>
+            <form id="manager-login-form" class="stacked-form">
+              <h3>League manager</h3>
+              <p id="manager-login-help" class="muted">Set or enter the manager passcode for full editing access.</p>
+              <label>
+                Manager passcode
+                <input name="passcode" type="password" minlength="4" required />
+              </label>
+              <button type="submit">Unlock manager mode</button>
+            </form>
+          </div>
+          <p id="auth-message" class="auth-message" aria-live="polite"></p>
+        </section>
+
         <div id="league-workspace" hidden>
           <section class="metrics-grid" id="metrics"></section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League information</p>
+                <h2>Bio, by-laws, and general notes</h2>
+              </div>
+              <span class="pill">Read only</span>
+            </div>
+            <div id="league-info-display" class="info-display"></div>
+          </section>
 
           <section class="panel">
             <div class="section-heading">
@@ -96,6 +142,24 @@
           <section class="panel">
             <div class="section-heading">
               <div>
+                <p class="eyebrow">Message portal</p>
+                <h2>League messages</h2>
+              </div>
+              <span class="pill">Members only</span>
+            </div>
+            <form id="message-form" class="stacked-form">
+              <label>
+                Message
+                <textarea name="message" rows="3" placeholder="Post an update, ask for a sub, or share league information." required></textarea>
+              </label>
+              <button type="submit">Post message</button>
+            </form>
+            <div id="message-list" class="message-list"></div>
+          </section>
+
+          <section class="panel manager-only">
+            <div class="section-heading">
+              <div>
                 <p class="eyebrow">League setup</p>
                 <h2>Settings</h2>
               </div>
@@ -121,7 +185,7 @@
             </form>
           </section>
 
-          <section class="panel">
+          <section class="panel manager-only">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">League info</p>
@@ -146,7 +210,7 @@
           </section>
 
           <div class="workspace-grid">
-            <section class="panel">
+            <section class="panel manager-only">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Roster</p>
@@ -223,7 +287,7 @@
               </div>
             </section>
 
-            <section class="panel">
+            <section class="panel manager-only">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Scramble teams</p>
@@ -268,7 +332,7 @@
                 <span id="schedule-status" class="pill"></span>
               </div>
 
-              <form id="round-form" class="stacked-form">
+              <form id="round-form" class="stacked-form manager-only">
                 <div class="form-grid two">
                   <label>
                     Course

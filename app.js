@@ -1,4 +1,6 @@
 const STORAGE_KEY = "fairway-league-hub";
+const AUTH_KEY = "fairway-league-hub-auth";
+const MANAGER_PASSCODE_KEY = "fairway-league-hub-manager-passcode";
 
 const seedData = {
   selectedLeagueId: "league-demo",
@@ -12,6 +14,15 @@ const seedData = {
       bio: "Friendly weekly scramble league for golfers who want organized rounds without extra paperwork.",
       bylaws: "Players should confirm availability for each round. If you cannot play, reach out to the sub list to cover your spot.",
       generalInfo: "Rounds are managed in Golf Genius. Use this hub for league roster, team, payment, and availability visibility.",
+      messages: [
+        {
+          id: "message-1",
+          authorName: "League Manager",
+          authorEmail: "",
+          text: "Welcome to the league portal. Use this message board for league updates and sub coordination.",
+          createdAt: "2026-05-28T12:00:00.000Z"
+        }
+      ],
       players: [
         {
           id: "player-1",
@@ -76,17 +87,28 @@ const seedData = {
 };
 
 let state = loadState();
+let auth = loadAuth();
 
 const elements = {
   activeLeagueSubtitle: document.querySelector("#active-league-subtitle"),
   activeLeagueTitle: document.querySelector("#active-league-title"),
+  authMessage: document.querySelector("#auth-message"),
+  authPanel: document.querySelector("#auth-panel"),
+  authStatus: document.querySelector("#auth-status"),
   deleteLeague: document.querySelector("#delete-league"),
   emptyState: document.querySelector("#empty-state"),
   leagueCount: document.querySelector("#league-count"),
+  leagueInfoDisplay: document.querySelector("#league-info-display"),
   leagueInfoForm: document.querySelector("#league-info-form"),
   leagueForm: document.querySelector("#league-form"),
   leagueList: document.querySelector("#league-list"),
   leagueWorkspace: document.querySelector("#league-workspace"),
+  logoutButton: document.querySelector("#logout-button"),
+  managerLoginForm: document.querySelector("#manager-login-form"),
+  managerLoginHelp: document.querySelector("#manager-login-help"),
+  memberLoginForm: document.querySelector("#member-login-form"),
+  messageForm: document.querySelector("#message-form"),
+  messageList: document.querySelector("#message-list"),
   metricCardTemplate: document.querySelector("#metric-card-template"),
   metrics: document.querySelector("#metrics"),
   playerForm: document.querySelector("#player-form"),
@@ -114,6 +136,10 @@ elements.playerForm.addEventListener("submit", addPlayer);
 elements.rosterImportForm.addEventListener("submit", importRoster);
 elements.roundForm.addEventListener("submit", addRound);
 elements.teamForm.addEventListener("submit", addTeam);
+elements.memberLoginForm.addEventListener("submit", loginMember);
+elements.managerLoginForm.addEventListener("submit", loginManager);
+elements.messageForm.addEventListener("submit", addMessage);
+elements.logoutButton.addEventListener("click", logout);
 elements.deleteLeague.addEventListener("click", deleteActiveLeague);
 
 render();
@@ -136,12 +162,29 @@ function loadState() {
   }
 }
 
+function loadAuth() {
+  try {
+    return JSON.parse(window.localStorage.getItem(AUTH_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAuth() {
+  if (auth) {
+    window.localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+  } else {
+    window.localStorage.removeItem(AUTH_KEY);
+  }
+}
+
 function normalizeState(candidate) {
   const leagues = candidate.leagues.map((league) => ({
     ...league,
     bio: league.bio || "",
     bylaws: league.bylaws || "",
     generalInfo: league.generalInfo || "",
+    messages: Array.isArray(league.messages) ? league.messages : [],
     players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
     rounds: Array.isArray(league.rounds)
       ? league.rounds.map((round) => ({
@@ -226,8 +269,24 @@ function formatTime(value) {
   }).format(date);
 }
 
+function formatMessageDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
 function createLeague(event) {
   event.preventDefault();
+  if (!isManager()) {
+    return;
+  }
   const data = Object.fromEntries(new FormData(event.currentTarget));
   const league = {
     id: uid("league"),
@@ -238,6 +297,7 @@ function createLeague(event) {
     bio: "",
     bylaws: "",
     generalInfo: "",
+    messages: [],
     players: [],
     rounds: [],
     teams: []
@@ -253,6 +313,9 @@ function createLeague(event) {
 
 function addTeam(event) {
   event.preventDefault();
+  if (!isManager()) {
+    return;
+  }
   const league = activeLeague();
   const data = Object.fromEntries(new FormData(event.currentTarget));
 
@@ -275,7 +338,7 @@ function addTeam(event) {
 
 function updateSettings(event) {
   const league = activeLeague();
-  if (!league) {
+  if (!league || !isManager()) {
     return;
   }
 
@@ -293,7 +356,7 @@ function updateSettings(event) {
 
 function updateLeagueInfo(event) {
   const league = activeLeague();
-  if (!league) {
+  if (!league || !isManager()) {
     return;
   }
 
@@ -301,8 +364,77 @@ function updateLeagueInfo(event) {
   persistAndRender();
 }
 
+function loginMember(event) {
+  event.preventDefault();
+  const league = activeLeague();
+  const email = event.currentTarget.email.value.trim().toLowerCase();
+  const player = league?.players.find((item) => item.email.toLowerCase() === email);
+
+  if (!league || !player) {
+    elements.authMessage.textContent = "That email is not on this league roster.";
+    return;
+  }
+
+  auth = {
+    mode: "member",
+    leagueId: league.id,
+    playerId: player.id,
+    email: player.email
+  };
+  saveAuth();
+  event.currentTarget.reset();
+  elements.authMessage.textContent = "";
+  render();
+}
+
+function loginManager(event) {
+  event.preventDefault();
+  const passcode = event.currentTarget.passcode.value;
+  const savedPasscode = window.localStorage.getItem(MANAGER_PASSCODE_KEY);
+
+  if (!savedPasscode) {
+    window.localStorage.setItem(MANAGER_PASSCODE_KEY, passcode);
+  } else if (passcode !== savedPasscode) {
+    elements.authMessage.textContent = "Manager passcode is incorrect.";
+    return;
+  }
+
+  auth = {
+    mode: "manager"
+  };
+  saveAuth();
+  event.currentTarget.reset();
+  elements.authMessage.textContent = "";
+  render();
+}
+
+function logout() {
+  auth = null;
+  saveAuth();
+  render();
+}
+
+function isManager() {
+  return auth?.mode === "manager";
+}
+
+function currentMember(league = activeLeague()) {
+  if (auth?.mode !== "member" || !league || auth.leagueId !== league.id) {
+    return null;
+  }
+
+  return league.players.find((player) => player.id === auth.playerId && player.email === auth.email) ?? null;
+}
+
+function hasLeagueAccess(league = activeLeague()) {
+  return Boolean(league && (isManager() || currentMember(league)));
+}
+
 function addPlayer(event) {
   event.preventDefault();
+  if (!isManager()) {
+    return;
+  }
   const league = activeLeague();
   const data = Object.fromEntries(new FormData(event.currentTarget));
 
@@ -328,6 +460,9 @@ function addPlayer(event) {
 
 async function importRoster(event) {
   event.preventDefault();
+  if (!isManager()) {
+    return;
+  }
   const form = event.currentTarget;
   const league = activeLeague();
   const file = form.rosterFile.files[0];
@@ -501,6 +636,9 @@ function assignPlayerToImportedTeam(league, playerId, teamName) {
 
 function addRound(event) {
   event.preventDefault();
+  if (!isManager()) {
+    return;
+  }
   const league = activeLeague();
   const data = Object.fromEntries(new FormData(event.currentTarget));
 
@@ -524,9 +662,36 @@ function addRound(event) {
   persistAndRender();
 }
 
+function addMessage(event) {
+  event.preventDefault();
+  const league = activeLeague();
+  const member = currentMember(league);
+
+  if (!league || (!member && !isManager())) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  const text = data.message.trim();
+  if (!text) {
+    return;
+  }
+
+  league.messages.unshift({
+    id: uid("message"),
+    authorName: member?.name ?? "League Manager",
+    authorEmail: member?.email ?? "",
+    text,
+    createdAt: new Date().toISOString()
+  });
+
+  event.currentTarget.reset();
+  persistAndRender();
+}
+
 function deleteActiveLeague() {
   const league = activeLeague();
-  if (!league) {
+  if (!league || !isManager()) {
     return;
   }
 
@@ -550,19 +715,34 @@ function render() {
   state.selectedLeagueId = league?.id ?? null;
 
   renderLeagueList();
+  renderAccessControls(league);
 
   if (!league) {
     elements.emptyState.hidden = false;
     elements.leagueWorkspace.hidden = true;
+    elements.authPanel.hidden = isManager();
     elements.deleteLeague.hidden = true;
     elements.activeLeagueTitle.textContent = "Create a league to get started";
-    elements.activeLeagueSubtitle.textContent = "Track rosters, dues, schedule, tee times, and available spots in one place.";
+    elements.activeLeagueSubtitle.textContent = isManager()
+      ? "Track rosters, dues, schedule, tee times, and available spots in one place."
+      : "Unlock manager mode to create the first league.";
+    return;
+  }
+
+  if (!hasLeagueAccess(league)) {
+    elements.emptyState.hidden = true;
+    elements.authPanel.hidden = false;
+    elements.leagueWorkspace.hidden = true;
+    elements.deleteLeague.hidden = true;
+    elements.activeLeagueTitle.textContent = league.name;
+    elements.activeLeagueSubtitle.textContent = "Sign in with a roster email to view the portal, or unlock manager mode to edit league data.";
     return;
   }
 
   elements.emptyState.hidden = true;
+  elements.authPanel.hidden = true;
   elements.leagueWorkspace.hidden = false;
-  elements.deleteLeague.hidden = false;
+  elements.deleteLeague.hidden = !isManager();
   elements.activeLeagueTitle.textContent = league.name;
   elements.activeLeagueSubtitle.textContent = `${league.season} - ${league.players.length} players - ${league.teams.length} teams - ${league.rounds.length} scheduled rounds`;
 
@@ -575,10 +755,75 @@ function render() {
   elements.leagueInfoForm.generalInfo.value = league.generalInfo;
 
   renderMetrics(league);
+  renderLeagueInfoDisplay(league);
   renderPublicRosters(league);
+  renderMessages(league);
   renderPlayers(league);
   renderTeams(league);
   renderRounds(league);
+}
+
+function renderAccessControls(league) {
+  const manager = isManager();
+  const member = currentMember(league);
+  const hasAccess = Boolean(manager || member);
+
+  document.querySelectorAll(".manager-only").forEach((element) => {
+    element.hidden = !manager;
+  });
+
+  elements.authStatus.hidden = !hasAccess;
+  elements.logoutButton.hidden = !hasAccess;
+  elements.managerLoginHelp.textContent = window.localStorage.getItem(MANAGER_PASSCODE_KEY)
+    ? "Enter the manager passcode for full editing access."
+    : "Set a manager passcode for full editing access on this browser.";
+
+  if (manager) {
+    elements.authStatus.textContent = "Signed in as League Manager";
+  } else if (member) {
+    elements.authStatus.textContent = `Signed in as ${member.name}`;
+  }
+}
+
+function renderLeagueInfoDisplay(league) {
+  const items = [
+    ["League bio", league.bio],
+    ["By-laws", league.bylaws],
+    ["General information", league.generalInfo]
+  ];
+
+  elements.leagueInfoDisplay.replaceChildren();
+  items.forEach(([label, value]) => {
+    const article = document.createElement("article");
+    article.className = "info-card";
+    article.innerHTML = `<h3>${escapeHtml(label)}</h3><p>${escapeHtml(value || "No information posted yet.")}</p>`;
+    elements.leagueInfoDisplay.append(article);
+  });
+}
+
+function renderMessages(league) {
+  elements.messageList.replaceChildren();
+
+  if (!league.messages.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = "No messages yet.";
+    elements.messageList.append(empty);
+    return;
+  }
+
+  league.messages.forEach((message) => {
+    const article = document.createElement("article");
+    article.className = "message-card";
+    article.innerHTML = `
+      <div>
+        <strong>${escapeHtml(message.authorName)}</strong>
+        <span class="muted">${formatMessageDate(message.createdAt)}</span>
+      </div>
+      <p>${escapeHtml(message.text)}</p>
+    `;
+    elements.messageList.append(article);
+  });
 }
 
 function renderLeagueList() {
@@ -1076,7 +1321,9 @@ function renderRounds(league) {
           const row = document.createElement("div");
           row.className = "substitution-row";
           row.innerHTML = `<span><strong>${escapeHtml(subPlayer.name)}</strong> subs for ${escapeHtml(outPlayer.name)} on ${escapeHtml(teamNameForPlayer(league, outPlayer.id))}</span>`;
-          row.append(actionButton("Remove", () => removeRoundSubstitution(round, substitution.outPlayerId), "danger ghost"));
+          if (isManager()) {
+            row.append(actionButton("Remove", () => removeRoundSubstitution(round, substitution.outPlayerId), "danger ghost"));
+          }
           substitutionList.append(row);
         });
       } else {
@@ -1090,16 +1337,18 @@ function renderRounds(league) {
       card.append(availabilityBoard);
       card.append(openRequests);
       card.append(substitutionList);
-      card.append(roundSubstitutionControls(league, round));
-      card.append(actionButton("Remove round", () => {
-        league.rounds = league.rounds.filter((item) => item.id !== round.id);
-        persistAndRender();
-      }, "danger ghost"));
+      if (isManager()) {
+        card.append(roundSubstitutionControls(league, round));
+        card.append(actionButton("Remove round", () => {
+          league.rounds = league.rounds.filter((item) => item.id !== round.id);
+          persistAndRender();
+        }, "danger ghost"));
+      }
       elements.roundList.append(card);
     });
 }
 
-function roundAvailabilityRow(round, player) {
+function roundAvailabilityRow(round, player, canEdit) {
   const row = document.createElement("div");
   row.className = "availability-row";
   const status = availabilityForPlayer(round, player.id);
@@ -1110,17 +1359,25 @@ function roundAvailabilityRow(round, player) {
 
   const actions = document.createElement("div");
   actions.className = "availability-actions";
-  const confirmButton = actionButton("Can play", () => setRoundAvailability(round, player.id, "confirmed"));
-  const outButton = actionButton("Cannot play", () => setRoundAvailability(round, player.id, "out"), "danger ghost");
-  confirmButton.disabled = status === "confirmed";
-  outButton.disabled = status === "out";
-  actions.append(confirmButton, outButton);
+  if (canEdit) {
+    const confirmButton = actionButton("Can play", () => setRoundAvailability(round, player.id, "confirmed"));
+    const outButton = actionButton("Cannot play", () => setRoundAvailability(round, player.id, "out"), "danger ghost");
+    confirmButton.disabled = status === "confirmed";
+    outButton.disabled = status === "out";
+    actions.append(confirmButton, outButton);
+  } else {
+    const locked = document.createElement("span");
+    locked.className = "muted";
+    locked.textContent = "Roster-only update";
+    actions.append(locked);
+  }
 
   row.append(details, actions);
   return row;
 }
 
 function renderRoundAvailabilityGroups(league, round) {
+  const member = currentMember(league);
   return scrambleTeamGroups(league).map((group) => {
     const section = document.createElement("section");
     section.className = "team-availability-group";
@@ -1130,7 +1387,7 @@ function renderRoundAvailabilityGroups(league, round) {
     section.append(title);
 
     group.players.forEach((player) => {
-      section.append(roundAvailabilityRow(round, player));
+      section.append(roundAvailabilityRow(round, player, isManager() || member?.id === player.id));
     });
 
     return section;

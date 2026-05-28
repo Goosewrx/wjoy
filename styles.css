@@ -142,6 +142,7 @@ th {
 .brand,
 .section-heading,
 .hero,
+.hero-actions,
 .player-actions,
 .round-meta,
 .assignment-form,
@@ -150,6 +151,21 @@ th {
   align-items: center;
   display: flex;
   gap: 0.8rem;
+}
+
+.hero-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.auth-status {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 900;
+  padding: 0.5rem 0.75rem;
 }
 
 .brand-mark {
@@ -267,6 +283,48 @@ th {
   gap: 1.25rem;
   grid-template-columns: minmax(0, 1.25fr) minmax(22rem, 0.75fr);
   margin-top: 1.25rem;
+}
+
+.auth-grid,
+.info-display {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.auth-grid h3 {
+  margin: 0;
+}
+
+.auth-message {
+  color: var(--danger);
+  font-weight: 900;
+  margin-bottom: 0;
+}
+
+.info-card,
+.message-card {
+  background: #fbfdfb;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.info-card h3,
+.info-card p,
+.message-card p {
+  margin: 0;
+}
+
+.info-card p,
+.message-card p {
+  white-space: pre-line;
+}
+
+.message-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .section-heading {
@@ -626,6 +684,8 @@ th {
 
   .metrics-grid,
   .directory-grid,
+  .auth-grid,
+  .info-display,
   .round-team-lineups,
   .form-grid.four {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -643,6 +703,8 @@ th {
   .form-grid.three,
   .form-grid.four,
   .directory-grid,
+  .auth-grid,
+  .info-display,
   .round-team-lineups,
   .metrics-grid {
     grid-template-columns: 1fr;
@@ -652,6 +714,10 @@ th {
     align-items: flex-start;
     flex-direction: column;
     padding: 1.25rem;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
   }
 
   .assignment-form,
