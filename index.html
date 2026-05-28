@@ -121,6 +121,30 @@
             </form>
           </section>
 
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League info</p>
+                <h2>Bio, by-laws, and general notes</h2>
+              </div>
+              <span class="pill">Autosaves</span>
+            </div>
+            <form id="league-info-form" class="stacked-form">
+              <label>
+                League bio
+                <textarea name="bio" rows="4" placeholder="League history, format, and what new players should know."></textarea>
+              </label>
+              <label>
+                By-laws
+                <textarea name="bylaws" rows="5" placeholder="Rules, eligibility, scoring policy, payment policy, and conduct expectations."></textarea>
+              </label>
+              <label>
+                General information
+                <textarea name="generalInfo" rows="4" placeholder="Golf Genius link, announcements, contact instructions, weather policy, etc."></textarea>
+              </label>
+            </form>
+          </section>
+
           <div class="workspace-grid">
             <section class="panel">
               <div class="section-heading">
@@ -156,8 +180,11 @@
                     </select>
                   </label>
                   <label>
-                    Paid
-                    <input name="paid" type="number" min="0" step="1" value="0" />
+                    Payment
+                    <select name="paid">
+                      <option value="unpaid">Unpaid</option>
+                      <option value="paid">Paid</option>
+                    </select>
                   </label>
                   <label>
                     Notes
@@ -165,6 +192,19 @@
                   </label>
                 </div>
                 <button type="submit">Add player</button>
+              </form>
+
+              <form id="roster-import-form" class="import-box">
+                <div>
+                  <h3>Import roster from spreadsheet</h3>
+                  <p class="muted">Upload an Excel-exported CSV/TSV with columns like name, email, phone, status, paid, notes, and team.</p>
+                </div>
+                <label>
+                  Roster file
+                  <input name="rosterFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" required />
+                </label>
+                <button type="submit">Import roster</button>
+                <p id="roster-import-status" class="muted" aria-live="polite"></p>
               </form>
 
               <div class="table-wrap">

@@ -9,6 +9,9 @@ const seedData = {
       season: "Summer 2026",
       rosterLimit: 24,
       dues: 120,
+      bio: "Friendly weekly scramble league for golfers who want organized rounds without extra paperwork.",
+      bylaws: "Players should confirm availability for each round. If you cannot play, reach out to the sub list to cover your spot.",
+      generalInfo: "Rounds are managed in Golf Genius. Use this hub for league roster, team, payment, and availability visibility.",
       players: [
         {
           id: "player-1",
@@ -80,6 +83,7 @@ const elements = {
   deleteLeague: document.querySelector("#delete-league"),
   emptyState: document.querySelector("#empty-state"),
   leagueCount: document.querySelector("#league-count"),
+  leagueInfoForm: document.querySelector("#league-info-form"),
   leagueForm: document.querySelector("#league-form"),
   leagueList: document.querySelector("#league-list"),
   leagueWorkspace: document.querySelector("#league-workspace"),
@@ -91,6 +95,8 @@ const elements = {
   publicSubList: document.querySelector("#public-sub-list"),
   publicTeamList: document.querySelector("#public-team-list"),
   rosterStatus: document.querySelector("#roster-status"),
+  rosterImportForm: document.querySelector("#roster-import-form"),
+  rosterImportStatus: document.querySelector("#roster-import-status"),
   roundForm: document.querySelector("#round-form"),
   roundList: document.querySelector("#round-list"),
   scheduleStatus: document.querySelector("#schedule-status"),
@@ -103,7 +109,9 @@ const elements = {
 
 elements.leagueForm.addEventListener("submit", createLeague);
 elements.settingsForm.addEventListener("input", updateSettings);
+elements.leagueInfoForm.addEventListener("input", updateLeagueInfo);
 elements.playerForm.addEventListener("submit", addPlayer);
+elements.rosterImportForm.addEventListener("submit", importRoster);
 elements.roundForm.addEventListener("submit", addRound);
 elements.teamForm.addEventListener("submit", addTeam);
 elements.deleteLeague.addEventListener("click", deleteActiveLeague);
@@ -131,7 +139,10 @@ function loadState() {
 function normalizeState(candidate) {
   const leagues = candidate.leagues.map((league) => ({
     ...league,
-    players: Array.isArray(league.players) ? league.players : [],
+    bio: league.bio || "",
+    bylaws: league.bylaws || "",
+    generalInfo: league.generalInfo || "",
+    players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
     rounds: Array.isArray(league.rounds)
       ? league.rounds.map((round) => ({
           ...round,
@@ -158,6 +169,13 @@ function normalizeState(candidate) {
       ? candidate.selectedLeagueId
       : leagues[0]?.id ?? null,
     leagues
+  };
+}
+
+function normalizePlayer(league, player) {
+  return {
+    ...player,
+    paid: isPaidValue(player.paid) ? Number(league.dues || 0) : 0
   };
 }
 
@@ -217,6 +235,9 @@ function createLeague(event) {
     season: data.season.trim(),
     rosterLimit: Number(data.rosterLimit),
     dues: Number(data.dues),
+    bio: "",
+    bylaws: "",
+    generalInfo: "",
     players: [],
     rounds: [],
     teams: []
@@ -270,6 +291,16 @@ function updateSettings(event) {
   persistAndRender();
 }
 
+function updateLeagueInfo(event) {
+  const league = activeLeague();
+  if (!league) {
+    return;
+  }
+
+  league[event.target.name] = event.target.value;
+  persistAndRender();
+}
+
 function addPlayer(event) {
   event.preventDefault();
   const league = activeLeague();
@@ -285,14 +316,186 @@ function addPlayer(event) {
     email: data.email.trim(),
     phone: data.phone.trim(),
     status: data.status,
-    paid: Number(data.paid) || 0,
+    paid: data.paid === "paid" ? Number(league.dues || 0) : 0,
     notes: data.notes.trim()
   });
 
   event.currentTarget.reset();
   event.currentTarget.status.value = "Active";
-  event.currentTarget.paid.value = 0;
+  event.currentTarget.paid.value = "unpaid";
   persistAndRender();
+}
+
+async function importRoster(event) {
+  event.preventDefault();
+  const league = activeLeague();
+  const file = event.currentTarget.rosterFile.files[0];
+
+  if (!league || !file) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const rows = parseDelimitedRows(text);
+
+    if (rows.length < 2) {
+      throw new Error("The import file needs a header row and at least one player row.");
+    }
+
+    const headers = rows[0].map(normalizeHeader);
+    let importedCount = 0;
+
+    rows.slice(1).forEach((row) => {
+      if (!row.some((value) => value.trim())) {
+        return;
+      }
+
+      const name = columnValue(row, headers, ["name", "player", "playername", "fullname"]);
+      if (!name) {
+        return;
+      }
+
+      const email = columnValue(row, headers, ["email", "emailaddress", "e-mail"]);
+      const existing = league.players.find((player) => {
+        const sameEmail = email && player.email && player.email.toLowerCase() === email.toLowerCase();
+        const sameName = player.name.toLowerCase() === name.toLowerCase();
+        return sameEmail || sameName;
+      });
+      const player = existing ?? {
+        id: uid("player"),
+        name,
+        email: "",
+        phone: "",
+        status: "Active",
+        paid: 0,
+        notes: ""
+      };
+
+      player.name = name;
+      player.email = email;
+      player.phone = columnValue(row, headers, ["phone", "cell", "mobile", "phonenumber"]);
+      player.status = normalizePlayerStatus(columnValue(row, headers, ["status", "type", "role"]));
+      player.paid = isPaidValue(columnValue(row, headers, ["paid", "payment", "paymentstatus", "paidstatus"]))
+        ? Number(league.dues || 0)
+        : 0;
+      player.notes = columnValue(row, headers, ["notes", "note", "comments"]);
+
+      if (!existing) {
+        league.players.push(player);
+      }
+
+      const teamName = columnValue(row, headers, ["team", "scrambleteam", "scramble"]);
+      if (teamName && player.status === "Active") {
+        assignPlayerToImportedTeam(league, player.id, teamName);
+      }
+
+      importedCount += 1;
+    });
+
+    if (!importedCount) {
+      throw new Error("No players were imported. Make sure the file has a name or player column.");
+    }
+
+    event.currentTarget.reset();
+    persistAndRender();
+    elements.rosterImportStatus.textContent = `Imported ${importedCount} players. Payments were set as paid or unpaid only.`;
+  } catch (error) {
+    elements.rosterImportStatus.textContent = error.message;
+  }
+}
+
+function parseDelimitedRows(text) {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter = firstLine.includes("\t") ? "\t" : ",";
+  const rows = [];
+  let row = [];
+  let value = "";
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const next = text[index + 1];
+
+    if (character === '"') {
+      if (quoted && next === '"') {
+        value += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (character === delimiter && !quoted) {
+      row.push(value.trim());
+      value = "";
+    } else if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(value.trim());
+      rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += character;
+    }
+  }
+
+  if (value || row.length) {
+    row.push(value.trim());
+    rows.push(row);
+  }
+
+  return rows.filter((entry) => entry.some((cell) => cell));
+}
+
+function normalizeHeader(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function columnValue(row, headers, aliases) {
+  const index = aliases.map(normalizeHeader).map((alias) => headers.indexOf(alias)).find((columnIndex) => columnIndex >= 0);
+  return index === undefined ? "" : (row[index] || "").trim();
+}
+
+function normalizePlayerStatus(value) {
+  const normalized = String(value || "Active").trim().toLowerCase();
+
+  if (["sub", "substitute", "alternate"].includes(normalized)) {
+    return "Substitute";
+  }
+
+  if (["wait", "waitlist", "waiting"].includes(normalized)) {
+    return "Waitlist";
+  }
+
+  return "Active";
+}
+
+function assignPlayerToImportedTeam(league, playerId, teamName) {
+  league.teams.forEach((team) => {
+    team.playerIds = team.playerIds.filter((id) => id !== playerId);
+  });
+
+  let team = league.teams.find((item) => item.name.toLowerCase() === teamName.toLowerCase());
+  if (!team) {
+    team = {
+      id: uid("team"),
+      name: teamName,
+      captainId: playerId,
+      color: "",
+      notes: "Imported from roster spreadsheet",
+      playerIds: []
+    };
+    league.teams.push(team);
+  }
+
+  if (!team.playerIds.includes(playerId)) {
+    team.playerIds.push(playerId);
+  }
+
+  if (!team.captainId) {
+    team.captainId = playerId;
+  }
 }
 
 function addRound(event) {
@@ -366,6 +569,9 @@ function render() {
   elements.settingsForm.season.value = league.season;
   elements.settingsForm.rosterLimit.value = league.rosterLimit;
   elements.settingsForm.dues.value = league.dues;
+  elements.leagueInfoForm.bio.value = league.bio;
+  elements.leagueInfoForm.bylaws.value = league.bylaws;
+  elements.leagueInfoForm.generalInfo.value = league.generalInfo;
 
   renderMetrics(league);
   renderPublicRosters(league);
@@ -404,13 +610,14 @@ function renderMetrics(league) {
   const openSpots = Math.max(0, league.rosterLimit - activePlayers);
   const totalDue = league.players.reduce((sum, player) => sum + amountDue(league, player), 0);
   const totalPaid = league.players.reduce((sum, player) => sum + Number(player.paid || 0), 0);
+  const paidPlayers = league.players.filter((player) => amountDue(league, player) <= 0).length;
   const nextRound = [...league.rounds]
     .filter((round) => round.date)
     .sort((a, b) => a.date.localeCompare(b.date))[0];
 
   const cards = [
     ["Active roster", `${activePlayers}/${league.rosterLimit}`, `${openSpots} open spots`],
-    ["Payments", money(totalPaid), `${money(totalDue)} remaining`],
+    ["Payments", `${paidPlayers}/${league.players.length}`, `${money(totalPaid)} paid - ${money(totalDue)} remaining`],
     ["Teams", league.teams.length, `${teamMemberCount(league)} rostered on teams`],
     ["Rounds", league.rounds.length, nextRound ? `Next: ${formatDate(nextRound.date)}` : "No rounds scheduled"],
     ["Round starters", league.rounds.reduce((sum, round) => sum + roundPlayingPlayers(league, round).length, 0), "Roster players scheduled by default"]
@@ -443,6 +650,7 @@ function renderPlayers(league) {
   league.players.forEach((player) => {
     const due = amountDue(league, player);
     const teamName = teamForPlayer(league, player.id)?.name ?? "No team";
+    const paid = due <= 0;
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>
@@ -451,8 +659,8 @@ function renderPlayers(league) {
       </td>
       <td><span class="status-pill ${player.status.toLowerCase()}">${escapeHtml(player.status)}</span></td>
       <td>
-        <div class="${due <= 0 ? "payment-good" : "payment-due"}">${due <= 0 ? "Paid" : `${money(due)} due`}</div>
-        <div class="muted">${money(player.paid)} of ${money(league.dues)}</div>
+        <div class="${paid ? "payment-good" : "payment-due"}">${paid ? "Paid in full" : "Unpaid"}</div>
+        <div class="muted">${paid ? money(league.dues) : money(0)} of ${money(league.dues)}</div>
       </td>
       <td>
         <div>${escapeHtml(player.email || "No email")}</div>
@@ -464,8 +672,8 @@ function renderPlayers(league) {
     const actions = document.createElement("div");
     actions.className = "player-actions";
     actions.append(
-      actionButton(due <= 0 ? "Mark unpaid" : "Mark paid", () => {
-        player.paid = due <= 0 ? 0 : Number(league.dues || 0);
+      actionButton(paid ? "Mark unpaid" : "Mark paid", () => {
+        player.paid = paid ? 0 : Number(league.dues || 0);
         persistAndRender();
       }),
       actionButton(nextStatusLabel(player.status), () => {
@@ -481,7 +689,20 @@ function renderPlayers(league) {
 }
 
 function amountDue(league, player) {
-  return Math.max(0, Number(league.dues || 0) - Number(player.paid || 0));
+  return isPaidValue(player.paid) ? 0 : Number(league.dues || 0);
+}
+
+function isPaidValue(value) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value > 0;
+  }
+
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return ["paid", "yes", "y", "true", "1", "full", "complete", "completed"].includes(normalized);
 }
 
 function nextStatusLabel(status) {

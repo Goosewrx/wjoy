@@ -16,9 +16,11 @@ Then open `http://localhost:8000`.
 
 - Create, switch between, and delete leagues.
 - Edit each league's name, season, dues, and roster capacity.
+- Add league bio, by-laws, and general information.
 - Add and remove rostered players.
+- Import roster spreadsheets from Excel-exported CSV/TSV files.
 - Create fixed scramble teams and assign rostered players to team rosters.
-- Track player statuses, contact details, notes, and payments.
+- Track player statuses, contact details, notes, and paid/unpaid payments.
 - Show customer-visible scramble teams, active roster, and sub directory with contact links.
 - Add rounds with course, date, tee slots, and notes.
 - Treat the active roster as playing every round by default, grouped by fixed scramble teams with per-date confirm/cannot-play availability and visible sub requests.
