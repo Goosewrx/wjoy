@@ -67,6 +67,13 @@ const defaultState = {
       unavailableRoles: "",
       maxShifts: 2,
     },
+    {
+      name: "Morgan",
+      availability: [{ start: "06:00", end: "12:00" }],
+      preferredRoles: "Starter",
+      unavailableRoles: "",
+      maxShifts: 1,
+    },
   ],
 };
 

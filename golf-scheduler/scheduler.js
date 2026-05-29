@@ -182,6 +182,16 @@
     );
   }
 
+  function candidatePoolSize(shift, employees) {
+    return employees.filter((employee) => {
+      const role = shift.role.toLowerCase();
+      return (
+        !employee.unavailableRoles.includes(role) &&
+        employee.availability.some((window) => covers(window, shift))
+      );
+    }).length;
+  }
+
   function createState(employees) {
     return {
       byEmployee: new Map(employees.map((employee) => [employee.id, []])),
@@ -207,7 +217,14 @@
     const assignments = [];
     const unfilled = [];
 
-    expandShiftSlots(shifts).forEach((slot) => {
+    const slots = expandShiftSlots(shifts).sort(
+      (a, b) =>
+        candidatePoolSize(a, employees) - candidatePoolSize(b, employees) ||
+        a.start - b.start ||
+        a.role.localeCompare(b.role)
+    );
+
+    slots.forEach((slot) => {
       const candidates = employees
         .map((employee) => {
           const check = canWork(employee, slot, state);

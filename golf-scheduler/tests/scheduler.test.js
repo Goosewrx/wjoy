@@ -66,6 +66,35 @@ test("buildSchedule does not double-book overlapping shifts", () => {
   );
 });
 
+test("buildSchedule prioritizes constrained slots before broad shifts", () => {
+  const result = buildSchedule({
+    shifts: [
+      { role: "Cart Barn", start: "06:00", end: "12:00", needed: 1 },
+      { role: "Starter", start: "06:30", end: "10:30", needed: 1 },
+    ],
+    employees: [
+      {
+        name: "Alex",
+        availability: [{ start: "06:00", end: "13:00" }],
+        preferredRoles: "Starter, Cart Barn",
+        maxShifts: 2,
+      },
+      {
+        name: "Chris",
+        availability: [{ start: "06:00", end: "18:00" }],
+        preferredRoles: "Cart Barn",
+        maxShifts: 2,
+      },
+    ],
+  });
+
+  assert.equal(result.unfilled.length, 0);
+  assert.deepEqual(
+    result.assignments.map((assignment) => `${assignment.role}:${assignment.employeeName}`),
+    ["Cart Barn:Chris", "Starter:Alex"]
+  );
+});
+
 test("buildSchedule reports coverage gaps when availability is insufficient", () => {
   const result = buildSchedule({
     shifts: [{ role: "Pro Shop", start: "15:00", end: "20:00", needed: 2 }],
