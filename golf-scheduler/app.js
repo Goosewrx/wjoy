@@ -131,6 +131,7 @@ const unfilledList = document.querySelector("#unfilled-list");
 const statsPanel = document.querySelector("#stats-panel");
 const resultSummary = document.querySelector("#result-summary");
 const errorBox = document.querySelector("#error-box");
+const scheduleMode = document.querySelector("#schedule-mode");
 
 function inferZone(role = "") {
   const normalized = role.toLowerCase();
@@ -420,18 +421,27 @@ function renderStats(result) {
   });
 }
 
+function shiftsForMode(state) {
+  const mode = scheduleMode.value;
+  return state.shifts.filter((shift) => {
+    const days = shift.days.toLowerCase();
+    return mode === "outing" ? days.includes("outing") : !days.includes("outing");
+  });
+}
+
 function generateSchedule() {
   clearResults();
   try {
     const state = readFormState();
-    const result = window.GolfScheduler.buildSchedule(state);
+    const result = window.GolfScheduler.buildSchedule({ ...state, shifts: shiftsForMode(state) });
     saveState();
     renderSchedule(result);
     renderUnfilled(result);
     renderStats(result);
+    const modeLabel = scheduleMode.options[scheduleMode.selectedIndex].textContent;
     resultSummary.textContent = result.unfilled.length
-      ? `${result.assignments.length} assignment(s) made with ${result.unfilled.length} open slot(s).`
-      : `${result.assignments.length} assignment(s) made and every slot is covered.`;
+      ? `${modeLabel}: ${result.assignments.length} assignment(s) made with ${result.unfilled.length} open slot(s).`
+      : `${modeLabel}: ${result.assignments.length} assignment(s) made and every slot is covered.`;
   } catch (error) {
     errorBox.textContent = error.message;
     errorBox.hidden = false;
@@ -447,6 +457,8 @@ document.querySelector("#add-employee").addEventListener("click", () => {
   renderEmployeeRow();
   saveState();
 });
+
+scheduleMode.addEventListener("change", generateSchedule);
 
 document.querySelector("#generate").addEventListener("click", generateSchedule);
 

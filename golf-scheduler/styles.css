@@ -130,7 +130,20 @@ select:focus {
   outline: none;
 }
 
+.mode-picker {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-weight: 800;
+  gap: 10px;
+}
+
+.mode-picker select {
+  min-width: 170px;
+}
+
 .actions {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
