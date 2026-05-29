@@ -1,6 +1,8 @@
 const STORAGE_KEY = "fairway-league-hub";
 const AUTH_KEY = "fairway-league-hub-auth";
 const MANAGER_PASSCODE_KEY = "fairway-league-hub-manager-passcode";
+const PAYMENT_PORTAL_URL = "https://secure.east.prophetservices.com/Oaks_CandiaWoodsWS3/(S(sza4uk4dmpmjyadqdh1bkdlh))/";
+const DEFAULT_PAYMENT_LINKS = `Oaks/CandiaWoods Payment Portal | ${PAYMENT_PORTAL_URL}`;
 
 const seedData = {
   selectedLeagueId: "league-demo",
@@ -14,7 +16,7 @@ const seedData = {
       bio: "Friendly weekly scramble league for golfers who want organized rounds without extra paperwork.",
       bylaws: "Players should confirm availability for each round. If you cannot play, reach out to the sub list to cover your spot.",
       generalInfo: "Rounds are managed in Golf Genius. Use this hub for league roster, team, payment, and availability visibility.",
-      paymentLinks: "League Venmo | https://venmo.com/\nPayPal | https://paypal.com/",
+      paymentLinks: DEFAULT_PAYMENT_LINKS,
       messages: [
         {
           id: "message-1",
@@ -187,7 +189,7 @@ function normalizeState(candidate) {
     bio: league.bio || "",
     bylaws: league.bylaws || "",
     generalInfo: league.generalInfo || "",
-    paymentLinks: league.paymentLinks || "",
+    paymentLinks: normalizePaymentLinksForLeague(league.paymentLinks),
     messages: Array.isArray(league.messages) ? league.messages : [],
     players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
     rounds: Array.isArray(league.rounds)
@@ -224,6 +226,20 @@ function normalizePlayer(league, player) {
     ...player,
     paid: isPaidValue(player.paid) ? Number(league.dues || 0) : 0
   };
+}
+
+function normalizePaymentLinksForLeague(value) {
+  const paymentLinks = String(value || "").trim();
+  const legacyDefaults = [
+    "League Venmo | https://venmo.com/\nPayPal | https://paypal.com/",
+    "Venmo League Dues | https://venmo.com/\nPayPal League Dues | paypal.com"
+  ];
+
+  if (!paymentLinks || legacyDefaults.includes(paymentLinks)) {
+    return DEFAULT_PAYMENT_LINKS;
+  }
+
+  return paymentLinks;
 }
 
 function saveState() {
@@ -301,7 +317,7 @@ function createLeague(event) {
     bio: "",
     bylaws: "",
     generalInfo: "",
-    paymentLinks: "",
+    paymentLinks: DEFAULT_PAYMENT_LINKS,
     messages: [],
     players: [],
     rounds: [],
