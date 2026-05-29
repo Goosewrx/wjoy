@@ -181,19 +181,34 @@ function createInput(value, type = "text", options = {}) {
   return input;
 }
 
-function createAlwaysAvailableControl(checked = false) {
+function createAlwaysAvailableControl(checked = false, availabilityInput) {
   const label = document.createElement("label");
   label.className = "checkbox-label";
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = Boolean(checked);
-  checkbox.addEventListener("change", saveState);
+
+  const syncAvailabilityInput = () => {
+    if (!availabilityInput) {
+      return;
+    }
+    availabilityInput.disabled = checkbox.checked;
+    availabilityInput.title = checkbox.checked
+      ? "Ignored because this person is always available"
+      : "Enter one or more availability windows";
+  };
+
+  checkbox.addEventListener("change", () => {
+    syncAvailabilityInput();
+    saveState();
+  });
 
   const text = document.createElement("span");
   text.textContent = "Always";
 
   label.append(checkbox, text);
+  syncAvailabilityInput();
   return label;
 }
 
@@ -272,11 +287,15 @@ function formatAvailability(availability) {
 
 function renderEmployeeRow(employee = {}) {
   const row = document.createElement("tr");
+  const availabilityInput = createInput(employee.alwaysAvailable ? "" : formatAvailability(employee.availability), "text", {
+    placeholder: "6:00 AM-1:00 PM, 2:00 PM-6:00 PM",
+  });
+
   row.append(
     createCell(createInput(employee.name || "", "text", { placeholder: "Employee" })),
     createCell(createInput(employee.zones || inferZone(employee.preferredRoles), "text", { placeholder: ZONES.join(", ") })),
-    createCell(createInput(employee.alwaysAvailable ? "" : formatAvailability(employee.availability), "text", { placeholder: "6:00 AM-1:00 PM, 2:00 PM-6:00 PM" })),
-    createCell(createAlwaysAvailableControl(employee.alwaysAvailable)),
+    createCell(availabilityInput),
+    createCell(createAlwaysAvailableControl(employee.alwaysAvailable, availabilityInput)),
     createCell(createInput(employee.preferredRoles || "", "text", { placeholder: "Starter, Ranger" })),
     createCell(createInput(employee.unavailableRoles || "", "text", { placeholder: "Cart Barn" })),
     createCell(createInput(employee.maxShifts || 2, "number", { min: 1 })),

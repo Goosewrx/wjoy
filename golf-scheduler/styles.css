@@ -123,6 +123,12 @@ select {
   width: 100%;
 }
 
+input:disabled {
+  background: #eef2ed;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 input:focus,
 select:focus {
   border-color: var(--green);
