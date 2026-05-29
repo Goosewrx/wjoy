@@ -307,7 +307,8 @@ th {
 }
 
 .info-card,
-.message-card {
+.message-card,
+.payment-card {
   background: #fbfdfb;
   border: 1px solid var(--line);
   border-radius: 1rem;
@@ -316,13 +317,40 @@ th {
 
 .info-card h3,
 .info-card p,
+.payment-card h3,
+.payment-card p,
 .message-card p {
   margin: 0;
 }
 
 .info-card p,
+.payment-card p,
 .message-card p {
   white-space: pre-line;
+}
+
+.payment-link-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.payment-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.payment-links a {
+  background: var(--green);
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 900;
+  padding: 0.7rem 1rem;
+  text-decoration: none;
+}
+
+.payment-links a:hover {
+  background: var(--green-dark);
 }
 
 .message-list {

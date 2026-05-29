@@ -17,6 +17,7 @@ Then open `http://localhost:8000`.
 - Create, switch between, and delete leagues.
 - Edit each league's name, season, dues, and roster capacity.
 - Add league bio, by-laws, and general information.
+- Add member-visible online payment links for league dues.
 - Gate each league portal behind roster-email member login or manager passcode access.
 - Add and remove rostered players.
 - Import roster spreadsheets from Excel-exported CSV/TSV files.

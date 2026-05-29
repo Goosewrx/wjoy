@@ -14,6 +14,7 @@ const seedData = {
       bio: "Friendly weekly scramble league for golfers who want organized rounds without extra paperwork.",
       bylaws: "Players should confirm availability for each round. If you cannot play, reach out to the sub list to cover your spot.",
       generalInfo: "Rounds are managed in Golf Genius. Use this hub for league roster, team, payment, and availability visibility.",
+      paymentLinks: "League Venmo | https://venmo.com/\nPayPal | https://paypal.com/",
       messages: [
         {
           id: "message-1",
@@ -111,6 +112,7 @@ const elements = {
   messageList: document.querySelector("#message-list"),
   metricCardTemplate: document.querySelector("#metric-card-template"),
   metrics: document.querySelector("#metrics"),
+  paymentLinksDisplay: document.querySelector("#payment-link-list"),
   playerForm: document.querySelector("#player-form"),
   playerTable: document.querySelector("#player-table"),
   publicRosterList: document.querySelector("#public-roster-list"),
@@ -184,6 +186,7 @@ function normalizeState(candidate) {
     bio: league.bio || "",
     bylaws: league.bylaws || "",
     generalInfo: league.generalInfo || "",
+    paymentLinks: league.paymentLinks || "",
     messages: Array.isArray(league.messages) ? league.messages : [],
     players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
     rounds: Array.isArray(league.rounds)
@@ -297,6 +300,7 @@ function createLeague(event) {
     bio: "",
     bylaws: "",
     generalInfo: "",
+    paymentLinks: "",
     messages: [],
     players: [],
     rounds: [],
@@ -753,9 +757,11 @@ function render() {
   elements.leagueInfoForm.bio.value = league.bio;
   elements.leagueInfoForm.bylaws.value = league.bylaws;
   elements.leagueInfoForm.generalInfo.value = league.generalInfo;
+  elements.leagueInfoForm.paymentLinks.value = league.paymentLinks;
 
   renderMetrics(league);
   renderLeagueInfoDisplay(league);
+  renderPaymentLinks(league);
   renderPublicRosters(league);
   renderMessages(league);
   renderPlayers(league);
@@ -799,6 +805,72 @@ function renderLeagueInfoDisplay(league) {
     article.innerHTML = `<h3>${escapeHtml(label)}</h3><p>${escapeHtml(value || "No information posted yet.")}</p>`;
     elements.leagueInfoDisplay.append(article);
   });
+}
+
+function renderPaymentLinks(league) {
+  const links = parsePaymentLinks(league.paymentLinks);
+  const member = currentMember(league);
+  const paid = member ? amountDue(league, member) <= 0 : false;
+
+  elements.paymentLinksDisplay.replaceChildren();
+
+  const summary = document.createElement("article");
+  summary.className = "payment-card";
+  summary.innerHTML = `
+    <div>
+      <h3>${member ? `${escapeHtml(member.name)} payment status` : "League payment status"}</h3>
+      <p>${member ? (paid ? "You are marked paid in full." : `You are marked unpaid for ${money(league.dues)} league dues.`) : "Use the links below to pay league dues online."}</p>
+    </div>
+  `;
+  elements.paymentLinksDisplay.append(summary);
+
+  if (!links.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = "No online payment links have been posted yet.";
+    elements.paymentLinksDisplay.append(empty);
+    return;
+  }
+
+  const linkWrap = document.createElement("div");
+  linkWrap.className = "payment-links";
+  links.forEach((link) => {
+    const anchor = document.createElement("a");
+    anchor.href = link.url;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.textContent = link.label;
+    linkWrap.append(anchor);
+  });
+  elements.paymentLinksDisplay.append(linkWrap);
+}
+
+function parsePaymentLinks(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [labelPart, urlPart] = line.includes("|") ? line.split("|").map((part) => part.trim()) : ["Pay online", line];
+      const url = normalizePaymentUrl(urlPart || labelPart);
+      return url ? { label: labelPart || "Pay online", url } : null;
+    })
+    .filter(Boolean);
+}
+
+function normalizePaymentUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const url = new URL(withProtocol);
+    return url.href;
+  } catch {
+    return "";
+  }
 }
 
 function renderMessages(league) {
