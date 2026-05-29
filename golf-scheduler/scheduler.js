@@ -182,14 +182,26 @@
     );
   }
 
-  function candidatePoolSize(shift, employees) {
-    return employees.filter((employee) => {
-      const role = shift.role.toLowerCase();
-      return (
+  function candidatePool(shift, employees) {
+    const role = shift.role.toLowerCase();
+    return employees.filter(
+      (employee) =>
         !employee.unavailableRoles.includes(role) &&
         employee.availability.some((window) => covers(window, shift))
-      );
-    }).length;
+    );
+  }
+
+  function slotPriority(shift, employees) {
+    const pool = candidatePool(shift, employees);
+    const role = shift.role.toLowerCase();
+    const preferredCount = pool.filter((employee) =>
+      employee.preferredRoles.includes(role)
+    ).length;
+
+    return {
+      preferredCount,
+      candidateCount: pool.length,
+    };
   }
 
   function createState(employees) {
@@ -217,12 +229,17 @@
     const assignments = [];
     const unfilled = [];
 
-    const slots = expandShiftSlots(shifts).sort(
-      (a, b) =>
-        candidatePoolSize(a, employees) - candidatePoolSize(b, employees) ||
+    const slots = expandShiftSlots(shifts).sort((a, b) => {
+      const aPriority = slotPriority(a, employees);
+      const bPriority = slotPriority(b, employees);
+
+      return (
+        aPriority.preferredCount - bPriority.preferredCount ||
+        aPriority.candidateCount - bPriority.candidateCount ||
         a.start - b.start ||
         a.role.localeCompare(b.role)
-    );
+      );
+    });
 
     slots.forEach((slot) => {
       const candidates = employees
