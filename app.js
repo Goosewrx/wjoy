@@ -1365,6 +1365,7 @@ function renderRounds(league) {
           <span>${playingPlayers.length} expected players</span>
           <span>${substitutions.length} substitutions</span>
         </div>
+        <p class="muted">Roster default: everyone is playing. Use "Can't play this week" only when a player is out for this round.</p>
         <p class="muted">${escapeHtml(round.notes || "No notes")}</p>
       `;
 
@@ -1381,7 +1382,7 @@ function renderRounds(league) {
       } else {
         const empty = document.createElement("p");
         empty.className = "empty-copy";
-        empty.textContent = "Add active roster players so they can confirm or decline this date.";
+        empty.textContent = "Add active roster players so they are automatically included in this round.";
         availabilityBoard.append(empty);
       }
 
@@ -1408,7 +1409,7 @@ function renderRounds(league) {
       } else {
         const empty = document.createElement("p");
         empty.className = "empty-copy";
-        empty.textContent = "No open sub requests for this date.";
+        empty.textContent = "No one has marked themselves out for this date.";
         openRequests.append(empty);
       }
 
@@ -1456,7 +1457,7 @@ function roundAvailabilityRow(round, player, canEdit) {
   const row = document.createElement("div");
   row.className = "availability-row";
   const status = availabilityForPlayer(round, player.id);
-  const statusText = status === "confirmed" ? "Confirmed" : status === "out" ? "Cannot play" : "Assumed in";
+  const statusText = status === "confirmed" ? "Playing" : status === "out" ? "Cannot play this week" : "Playing by default";
 
   const details = document.createElement("div");
   details.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span class="status-pill ${status}">${statusText}</span>`;
@@ -1464,8 +1465,8 @@ function roundAvailabilityRow(round, player, canEdit) {
   const actions = document.createElement("div");
   actions.className = "availability-actions";
   if (canEdit) {
-    const confirmButton = actionButton("Can play", () => setRoundAvailability(round, player.id, "confirmed"));
-    const outButton = actionButton("Cannot play", () => setRoundAvailability(round, player.id, "out"), "danger ghost");
+    const confirmButton = actionButton("Playing", () => setRoundAvailability(round, player.id, "confirmed"));
+    const outButton = actionButton("Can't play this week", () => setRoundAvailability(round, player.id, "out"), "danger ghost");
     confirmButton.disabled = status === "confirmed";
     outButton.disabled = status === "out";
     actions.append(confirmButton, outButton);

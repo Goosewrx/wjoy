@@ -25,7 +25,7 @@ Then open `http://localhost:8000`.
 - Track player statuses, contact details, notes, and paid/unpaid payments.
 - Show customer-visible scramble teams, active roster, and sub directory with contact links.
 - Add rounds with course, date, tee slots, and notes.
-- Treat the active roster as playing every round by default, grouped by fixed scramble teams with per-date confirm/cannot-play availability and visible sub requests.
+- Treat every active roster player as playing each round by default, grouped by fixed scramble teams with per-date can't-play availability and visible sub requests.
 - Let signed-in members post league messages and update only their own round availability.
 - Persist data in the browser with `localStorage`.
 
