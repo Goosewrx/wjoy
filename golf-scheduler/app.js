@@ -1,6 +1,15 @@
 const STORAGE_KEY = "golf-scheduler-state-v2";
 
 const ZONES = ["Carts & Range", "Rangers/Starters", "Shop Employees"];
+const WEEK_DAYS = [
+  { key: "mon", label: "Mon" },
+  { key: "tue", label: "Tue" },
+  { key: "wed", label: "Wed" },
+  { key: "thu", label: "Thu" },
+  { key: "fri", label: "Fri" },
+  { key: "sat", label: "Sat" },
+  { key: "sun", label: "Sun" },
+];
 
 const TIME_OPTIONS = [
   ...Array.from({ length: 37 }, (_, index) => {
@@ -127,6 +136,7 @@ const defaultState = {
 const shiftsBody = document.querySelector("#shifts-body");
 const employeesBody = document.querySelector("#employees-body");
 const scheduleBody = document.querySelector("#schedule-body");
+const weeklyCalendar = document.querySelector("#weekly-calendar");
 const unfilledList = document.querySelector("#unfilled-list");
 const statsPanel = document.querySelector("#stats-panel");
 const resultSummary = document.querySelector("#result-summary");
@@ -308,6 +318,7 @@ function readFormState() {
 
 function clearResults() {
   scheduleBody.replaceChildren();
+  weeklyCalendar.replaceChildren();
   unfilledList.replaceChildren();
   statsPanel.replaceChildren();
   resultSummary.textContent = "";
@@ -325,6 +336,68 @@ function zoneBadge(zone) {
   badge.className = "zone-badge";
   badge.textContent = zone;
   return badge;
+}
+
+function daysForAssignment(assignment) {
+  const days = String(assignment.days || "").toLowerCase();
+  if (days.includes("all days") || days.includes("outing")) {
+    return WEEK_DAYS.map((day) => day.key);
+  }
+
+  const matchedDays = WEEK_DAYS.filter((day) => days.includes(day.key)).map((day) => day.key);
+  return matchedDays.length ? matchedDays : WEEK_DAYS.map((day) => day.key);
+}
+
+function renderAssignmentCard(assignment) {
+  const card = document.createElement("article");
+  card.className = "calendar-card";
+
+  const person = document.createElement("strong");
+  person.textContent = assignment.employeeName;
+
+  const time = document.createElement("span");
+  time.textContent = `${assignment.start} - ${assignment.end}`;
+
+  const role = document.createElement("span");
+  role.textContent = assignment.role;
+
+  const note = document.createElement("small");
+  note.textContent = assignment.notes || assignment.days || "";
+
+  card.append(person, time, role);
+  if (note.textContent) {
+    card.appendChild(note);
+  }
+
+  return card;
+}
+
+function renderWeeklyCalendar(result) {
+  weeklyCalendar.replaceChildren();
+
+  WEEK_DAYS.forEach((day) => {
+    const column = document.createElement("section");
+    column.className = "calendar-day";
+
+    const heading = document.createElement("h4");
+    heading.textContent = day.label;
+    column.appendChild(heading);
+
+    const dayAssignments = result.assignments
+      .filter((assignment) => daysForAssignment(assignment).includes(day.key))
+      .sort((a, b) => a.startMinutes - b.startMinutes || a.employeeName.localeCompare(b.employeeName));
+
+    if (!dayAssignments.length) {
+      const empty = document.createElement("p");
+      empty.className = "calendar-empty";
+      empty.textContent = "No shifts";
+      column.appendChild(empty);
+    } else {
+      dayAssignments.forEach((assignment) => column.appendChild(renderAssignmentCard(assignment)));
+    }
+
+    weeklyCalendar.appendChild(column);
+  });
 }
 
 function renderSchedule(result) {
@@ -435,6 +508,7 @@ function generateSchedule() {
     const state = readFormState();
     const result = window.GolfScheduler.buildSchedule({ ...state, shifts: shiftsForMode(state) });
     saveState();
+    renderWeeklyCalendar(result);
     renderSchedule(result);
     renderUnfilled(result);
     renderStats(result);

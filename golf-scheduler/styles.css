@@ -179,6 +179,64 @@ button {
   padding-inline: 0;
 }
 
+.calendar-section {
+  background: #f8fbf6;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  margin-bottom: 20px;
+  padding: 18px;
+}
+
+.calendar-section h3 {
+  margin: 0 0 4px;
+}
+
+.calendar-section p {
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.weekly-calendar {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  overflow-x: auto;
+}
+
+.calendar-day {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  min-height: 160px;
+  padding: 12px;
+}
+
+.calendar-day h4 {
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+}
+
+.calendar-card {
+  background: #eef6ec;
+  border-left: 4px solid var(--green);
+  border-radius: 12px;
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 10px;
+}
+
+.calendar-card span,
+.calendar-card small {
+  color: var(--muted);
+}
+
+.calendar-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .result-grid {
   display: grid;
   gap: 20px;
@@ -279,7 +337,65 @@ button {
 }
 
 @media (max-width: 900px) {
-  .result-grid {
+  .calendar-section {
+  background: #f8fbf6;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  margin-bottom: 20px;
+  padding: 18px;
+}
+
+.calendar-section h3 {
+  margin: 0 0 4px;
+}
+
+.calendar-section p {
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.weekly-calendar {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  overflow-x: auto;
+}
+
+.calendar-day {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  min-height: 160px;
+  padding: 12px;
+}
+
+.calendar-day h4 {
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+}
+
+.calendar-card {
+  background: #eef6ec;
+  border-left: 4px solid var(--green);
+  border-radius: 12px;
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 10px;
+}
+
+.calendar-card span,
+.calendar-card small {
+  color: var(--muted);
+}
+
+.calendar-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.result-grid {
     grid-template-columns: 1fr;
   }
 
