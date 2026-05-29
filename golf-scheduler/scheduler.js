@@ -14,6 +14,7 @@
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const DAY_MINUTES = 24 * 60;
+  const CLOSE_MINUTES = 20 * 60;
 
   function parseTime(value) {
     if (typeof value !== "string") {
@@ -21,6 +22,10 @@
     }
 
     const cleaned = value.trim().replace(/\s+/g, " ");
+    if (cleaned.toLowerCase() === "close") {
+      return CLOSE_MINUTES;
+    }
+
     const meridiemMatch = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
     const twentyFourHourMatch = cleaned.match(/^(\d{1,2}):(\d{2})$/);
 
@@ -84,6 +89,10 @@
     return [];
   }
 
+  function formatTimeLabel(value, minutes) {
+    return String(value || "").trim().toLowerCase() === "close" ? "Close" : formatTime(minutes);
+  }
+
   function normalizeWindow(window, label) {
     const start = parseTime(window.start);
     const end = parseTime(window.end);
@@ -94,8 +103,8 @@
     return {
       start,
       end,
-      startLabel: formatTime(start),
-      endLabel: formatTime(end),
+      startLabel: formatTimeLabel(window.start, start),
+      endLabel: formatTimeLabel(window.end, end),
     };
   }
 
@@ -120,6 +129,7 @@
       startLabel: window.startLabel,
       endLabel: window.endLabel,
       needed,
+      days: String(shift.days || "").trim(),
       notes: String(shift.notes || "").trim(),
     };
   }
@@ -295,6 +305,7 @@
           start: slot.startLabel,
           end: slot.endLabel,
           slotNumber: slot.slotNumber,
+          days: slot.days,
           message: `No available employee for ${slot.zone} / ${slot.role} ${slot.startLabel}-${slot.endLabel}.`,
         });
         return;
@@ -312,6 +323,7 @@
         endMinutes: slot.end,
         slotNumber: slot.slotNumber,
         preferenceMatched: employee.preferredRoles.includes(slot.role.toLowerCase()),
+        days: slot.days,
         notes: slot.notes,
       };
 

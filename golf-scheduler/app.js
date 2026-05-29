@@ -2,105 +2,124 @@ const STORAGE_KEY = "golf-scheduler-state-v2";
 
 const ZONES = ["Carts & Range", "Rangers/Starters", "Shop Employees"];
 
-const TIME_OPTIONS = Array.from({ length: 37 }, (_, index) => {
-  const minutes = 5 * 60 + index * 30;
-  return {
-    value: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
-    label: window.GolfScheduler.formatTime(minutes),
-  };
-});
+const TIME_OPTIONS = [
+  ...Array.from({ length: 37 }, (_, index) => {
+    const minutes = 5 * 60 + index * 30;
+    return {
+      value: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
+      label: window.GolfScheduler.formatTime(minutes),
+    };
+  }),
+  { value: "Close", label: "Close" },
+];
 
 const defaultState = {
   shifts: [
     {
-      zone: "Rangers/Starters",
-      role: "Starter",
-      start: "06:30",
-      end: "10:30",
-      needed: 1,
-      notes: "First tee and pace-of-play setup",
-    },
-    {
       zone: "Carts & Range",
-      role: "Cart Barn",
-      start: "06:00",
+      role: "Cart / Range Attendant",
+      start: "07:00",
       end: "12:00",
-      needed: 2,
-      notes: "Morning carts and range pick",
-    },
-    {
-      zone: "Shop Employees",
-      role: "Pro Shop",
-      start: "08:00",
-      end: "14:00",
       needed: 1,
-      notes: "Check-ins, phone, tee sheet",
-    },
-    {
-      zone: "Rangers/Starters",
-      role: "Ranger",
-      start: "11:00",
-      end: "16:00",
-      needed: 1,
-      notes: "Midday course loop",
+      days: "Mon · Wed · Fri · Sat · Sun",
+      notes: "Standard week",
     },
     {
       zone: "Carts & Range",
-      role: "Range Picker",
-      start: "12:00",
-      end: "18:00",
+      role: "Cart / Range Attendant",
+      start: "10:00",
+      end: "15:00",
+      needed: 1,
+      days: "All Days",
+      notes: "Standard week",
+    },
+    {
+      zone: "Carts & Range",
+      role: "Range Attendant",
+      start: "15:00",
+      end: "Close",
+      needed: 1,
+      days: "All Days",
+      notes: "★ Standard week",
+    },
+    {
+      zone: "Carts & Range",
+      role: "Cart Attendant",
+      start: "15:00",
+      end: "Close",
+      needed: 1,
+      days: "All Days",
+      notes: "Standard week",
+    },
+    {
+      zone: "Carts & Range",
+      role: "Cart / Range Attendant",
+      start: "10:00",
+      end: "15:00",
+      needed: 1,
+      days: "Outing Days",
+      notes: "Outing days",
+    },
+    {
+      zone: "Carts & Range",
+      role: "Outing Cart Clean",
+      start: "13:00",
+      end: "16:00",
       needed: 2,
-      notes: "Turnover, wash, close prep",
+      days: "Outing Days",
+      notes: "2 staff needed",
+    },
+    {
+      zone: "Carts & Range",
+      role: "Range Attendant",
+      start: "16:00",
+      end: "Close",
+      needed: 1,
+      days: "Outing Days",
+      notes: "★",
+    },
+    {
+      zone: "Carts & Range",
+      role: "Cart Attendant",
+      start: "16:00",
+      end: "Close",
+      needed: 1,
+      days: "Outing Days",
+      notes: "Outing days",
     },
   ],
   employees: [
     {
       name: "Alex",
-      zones: "Carts & Range, Rangers/Starters",
-      availability: [{ start: "06:00", end: "13:00" }],
-      preferredRoles: "Starter, Cart Barn",
+      zones: "Carts & Range",
+      availability: [{ start: "07:00", end: "15:00" }],
+      preferredRoles: "Cart / Range Attendant",
       unavailableRoles: "",
-      maxShifts: 2,
-    },
-    {
-      name: "Brianna",
-      zones: "Shop Employees, Rangers/Starters",
-      availability: [{ start: "08:00", end: "18:00" }],
-      preferredRoles: "Pro Shop, Ranger",
-      unavailableRoles: "Cart Barn, Range Picker",
       maxShifts: 2,
     },
     {
       name: "Chris",
       zones: "Carts & Range",
-      availability: [{ start: "06:00", end: "18:00" }],
-      preferredRoles: "Cart Barn, Range Picker",
+      availability: [{ start: "07:00", end: "Close" }],
+      preferredRoles: "Cart / Range Attendant, Cart Attendant",
       unavailableRoles: "",
       maxShifts: 3,
     },
     {
       name: "Devin",
-      zones: "Carts & Range, Rangers/Starters",
-      availability: [{ start: "10:00", end: "19:00" }],
-      preferredRoles: "Ranger, Range Picker",
+      zones: "Carts & Range",
+      availability: [{ start: "12:00", end: "Close" }],
+      preferredRoles: "Range Attendant, Outing Cart Clean",
       unavailableRoles: "",
-      maxShifts: 2,
+      maxShifts: 3,
     },
     {
-      name: "Jordan",
-      zones: "Shop Employees, Rangers/Starters",
-      availability: [{ start: "08:00", end: "16:00" }],
-      preferredRoles: "Pro Shop, Ranger",
+      name: "Taylor",
+      zones: "Carts & Range",
+      availability: [{ start: "13:00", end: "Close" }],
+      preferredRoles: "Outing Cart Clean, Cart Attendant",
       unavailableRoles: "",
-      maxShifts: 1,
-    },
-    {
-      name: "Morgan",
-      zones: "Rangers/Starters",
-      availability: [{ start: "06:00", end: "12:00" }],
-      preferredRoles: "Starter",
-      unavailableRoles: "",
-      maxShifts: 1,
+      maxShifts: 3,
     },
   ],
 };
@@ -202,10 +221,11 @@ function renderShiftRow(shift = {}) {
   const row = document.createElement("tr");
   row.append(
     createCell(createZoneSelect(shift.zone || inferZone(shift.role))),
-    createCell(createInput(shift.role || "", "text", { placeholder: "Cart Barn" })),
+    createCell(createInput(shift.role || "", "text", { placeholder: "Cart / Range Attendant" })),
     createCell(createTimeSelect(shift.start || "08:00")),
     createCell(createTimeSelect(shift.end || "12:00")),
     createCell(createInput(shift.needed || 1, "number", { min: 1 })),
+    createCell(createInput(shift.days || "", "text", { placeholder: "All Days" })),
     createCell(createInput(shift.notes || "", "text", { placeholder: "Optional" })),
     createCell(removeRowButton("Remove"))
   );
@@ -257,13 +277,14 @@ function parseAvailability(value) {
 
 function readFormState() {
   const shifts = Array.from(shiftsBody.querySelectorAll("tr")).map((row) => {
-    const [zone, role, start, end, needed, notes] = row.querySelectorAll("select, input");
+    const [zone, role, start, end, needed, days, notes] = row.querySelectorAll("select, input");
     return {
       zone: zone.value,
       role: role.value,
       start: start.value,
       end: end.value,
       needed: needed.value,
+      days: days.value,
       notes: notes.value,
     };
   });
@@ -315,7 +336,7 @@ function renderSchedule(result) {
 
     const headerRow = document.createElement("tr");
     const headerCell = document.createElement("td");
-    headerCell.colSpan = 6;
+    headerCell.colSpan = 7;
     headerCell.className = "zone-row";
     headerCell.appendChild(zoneBadge(zone));
     headerRow.appendChild(headerCell);
@@ -334,6 +355,7 @@ function renderSchedule(result) {
         textCell(assignment.zone),
         textCell(`${assignment.start} - ${assignment.end}`),
         textCell(assignment.role),
+        textCell(assignment.days || ""),
         textCell(assignment.employeeName),
         fitCell,
         textCell(assignment.notes || "")
