@@ -68,6 +68,13 @@ const defaultState = {
       maxShifts: 2,
     },
     {
+      name: "Jordan",
+      availability: [{ start: "08:00", end: "16:00" }],
+      preferredRoles: "Pro Shop, Ranger",
+      unavailableRoles: "",
+      maxShifts: 1,
+    },
+    {
       name: "Morgan",
       availability: [{ start: "06:00", end: "12:00" }],
       preferredRoles: "Starter",
