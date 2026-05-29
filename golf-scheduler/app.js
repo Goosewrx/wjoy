@@ -1,8 +1,19 @@
-const STORAGE_KEY = "golf-scheduler-state-v1";
+const STORAGE_KEY = "golf-scheduler-state-v2";
+
+const ZONES = ["Carts & Range", "Rangers/Starters", "Shop Employees"];
+
+const TIME_OPTIONS = Array.from({ length: 37 }, (_, index) => {
+  const minutes = 5 * 60 + index * 30;
+  return {
+    value: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
+    label: window.GolfScheduler.formatTime(minutes),
+  };
+});
 
 const defaultState = {
   shifts: [
     {
+      zone: "Rangers/Starters",
       role: "Starter",
       start: "06:30",
       end: "10:30",
@@ -10,6 +21,7 @@ const defaultState = {
       notes: "First tee and pace-of-play setup",
     },
     {
+      zone: "Carts & Range",
       role: "Cart Barn",
       start: "06:00",
       end: "12:00",
@@ -17,6 +29,7 @@ const defaultState = {
       notes: "Morning carts and range pick",
     },
     {
+      zone: "Shop Employees",
       role: "Pro Shop",
       start: "08:00",
       end: "14:00",
@@ -24,6 +37,7 @@ const defaultState = {
       notes: "Check-ins, phone, tee sheet",
     },
     {
+      zone: "Rangers/Starters",
       role: "Ranger",
       start: "11:00",
       end: "16:00",
@@ -31,7 +45,8 @@ const defaultState = {
       notes: "Midday course loop",
     },
     {
-      role: "Cart Barn",
+      zone: "Carts & Range",
+      role: "Range Picker",
       start: "12:00",
       end: "18:00",
       needed: 2,
@@ -41,6 +56,7 @@ const defaultState = {
   employees: [
     {
       name: "Alex",
+      zones: "Carts & Range, Rangers/Starters",
       availability: [{ start: "06:00", end: "13:00" }],
       preferredRoles: "Starter, Cart Barn",
       unavailableRoles: "",
@@ -48,27 +64,31 @@ const defaultState = {
     },
     {
       name: "Brianna",
+      zones: "Shop Employees, Rangers/Starters",
       availability: [{ start: "08:00", end: "18:00" }],
       preferredRoles: "Pro Shop, Ranger",
-      unavailableRoles: "Cart Barn",
+      unavailableRoles: "Cart Barn, Range Picker",
       maxShifts: 2,
     },
     {
       name: "Chris",
+      zones: "Carts & Range",
       availability: [{ start: "06:00", end: "18:00" }],
-      preferredRoles: "Cart Barn",
+      preferredRoles: "Cart Barn, Range Picker",
       unavailableRoles: "",
       maxShifts: 3,
     },
     {
       name: "Devin",
+      zones: "Carts & Range, Rangers/Starters",
       availability: [{ start: "10:00", end: "19:00" }],
-      preferredRoles: "Ranger, Cart Barn",
+      preferredRoles: "Ranger, Range Picker",
       unavailableRoles: "",
       maxShifts: 2,
     },
     {
       name: "Jordan",
+      zones: "Shop Employees, Rangers/Starters",
       availability: [{ start: "08:00", end: "16:00" }],
       preferredRoles: "Pro Shop, Ranger",
       unavailableRoles: "",
@@ -76,6 +96,7 @@ const defaultState = {
     },
     {
       name: "Morgan",
+      zones: "Rangers/Starters",
       availability: [{ start: "06:00", end: "12:00" }],
       preferredRoles: "Starter",
       unavailableRoles: "",
@@ -91,6 +112,20 @@ const unfilledList = document.querySelector("#unfilled-list");
 const statsPanel = document.querySelector("#stats-panel");
 const resultSummary = document.querySelector("#result-summary");
 const errorBox = document.querySelector("#error-box");
+
+function inferZone(role = "") {
+  const normalized = role.toLowerCase();
+  if (normalized.includes("cart") || normalized.includes("range")) {
+    return "Carts & Range";
+  }
+  if (normalized.includes("shop") || normalized.includes("pro")) {
+    return "Shop Employees";
+  }
+  if (normalized.includes("starter") || normalized.includes("ranger")) {
+    return "Rangers/Starters";
+  }
+  return ZONES[0];
+}
 
 function loadState() {
   try {
@@ -116,6 +151,35 @@ function createInput(value, type = "text", options = {}) {
   return input;
 }
 
+function createZoneSelect(value) {
+  const select = document.createElement("select");
+  ZONES.forEach((zone) => {
+    const option = document.createElement("option");
+    option.value = zone;
+    option.textContent = zone;
+    select.appendChild(option);
+  });
+  select.value = ZONES.includes(value) ? value : inferZone(value);
+  select.addEventListener("change", saveState);
+  return select;
+}
+
+function createTimeSelect(value) {
+  const select = document.createElement("select");
+  TIME_OPTIONS.forEach((time) => {
+    const option = document.createElement("option");
+    option.value = time.value;
+    option.textContent = time.label;
+    select.appendChild(option);
+  });
+  select.value = value || "08:00";
+  if (!select.value) {
+    select.value = "08:00";
+  }
+  select.addEventListener("change", saveState);
+  return select;
+}
+
 function createCell(child) {
   const cell = document.createElement("td");
   cell.appendChild(child);
@@ -137,9 +201,10 @@ function removeRowButton(label) {
 function renderShiftRow(shift = {}) {
   const row = document.createElement("tr");
   row.append(
+    createCell(createZoneSelect(shift.zone || inferZone(shift.role))),
     createCell(createInput(shift.role || "", "text", { placeholder: "Cart Barn" })),
-    createCell(createInput(shift.start || "08:00", "time")),
-    createCell(createInput(shift.end || "12:00", "time")),
+    createCell(createTimeSelect(shift.start || "08:00")),
+    createCell(createTimeSelect(shift.end || "12:00")),
     createCell(createInput(shift.needed || 1, "number", { min: 1 })),
     createCell(createInput(shift.notes || "", "text", { placeholder: "Optional" })),
     createCell(removeRowButton("Remove"))
@@ -147,14 +212,23 @@ function renderShiftRow(shift = {}) {
   shiftsBody.appendChild(row);
 }
 
-function renderEmployeeRow(employee = {}) {
-  const availability = (employee.availability || [{ start: "08:00", end: "17:00" }])
-    .map((window) => `${window.start}-${window.end}`)
+function formatAvailability(availability) {
+  return (availability || [{ start: "08:00", end: "17:00" }])
+    .map(
+      (window) =>
+        `${GolfScheduler.formatTime(GolfScheduler.parseTime(window.start))}-${GolfScheduler.formatTime(
+          GolfScheduler.parseTime(window.end)
+        )}`
+    )
     .join(", ");
+}
+
+function renderEmployeeRow(employee = {}) {
   const row = document.createElement("tr");
   row.append(
     createCell(createInput(employee.name || "", "text", { placeholder: "Employee" })),
-    createCell(createInput(availability, "text", { placeholder: "08:00-17:00, 18:00-20:00" })),
+    createCell(createInput(employee.zones || inferZone(employee.preferredRoles), "text", { placeholder: ZONES.join(", ") })),
+    createCell(createInput(formatAvailability(employee.availability), "text", { placeholder: "6:00 AM-1:00 PM, 2:00 PM-6:00 PM" })),
     createCell(createInput(employee.preferredRoles || "", "text", { placeholder: "Starter, Ranger" })),
     createCell(createInput(employee.unavailableRoles || "", "text", { placeholder: "Cart Barn" })),
     createCell(createInput(employee.maxShifts || 2, "number", { min: 1 })),
@@ -176,15 +250,16 @@ function parseAvailability(value) {
     .map((range) => range.trim())
     .filter(Boolean)
     .map((range) => {
-      const [start, end] = range.split("-").map((part) => part.trim());
+      const [start, end] = range.split(/\s*-\s*/).map((part) => part.trim());
       return { start, end };
     });
 }
 
 function readFormState() {
   const shifts = Array.from(shiftsBody.querySelectorAll("tr")).map((row) => {
-    const [role, start, end, needed, notes] = row.querySelectorAll("input");
+    const [zone, role, start, end, needed, notes] = row.querySelectorAll("select, input");
     return {
+      zone: zone.value,
       role: role.value,
       start: start.value,
       end: end.value,
@@ -194,10 +269,11 @@ function readFormState() {
   });
 
   const employees = Array.from(employeesBody.querySelectorAll("tr")).map((row) => {
-    const [name, availability, preferredRoles, unavailableRoles, maxShifts] =
+    const [name, zones, availability, preferredRoles, unavailableRoles, maxShifts] =
       row.querySelectorAll("input");
     return {
       name: name.value,
+      zones: zones.value,
       availability: parseAvailability(availability.value),
       preferredRoles: preferredRoles.value,
       unavailableRoles: unavailableRoles.value,
@@ -222,25 +298,48 @@ function textCell(value) {
   return cell;
 }
 
+function zoneBadge(zone) {
+  const badge = document.createElement("span");
+  badge.className = "zone-badge";
+  badge.textContent = zone;
+  return badge;
+}
+
 function renderSchedule(result) {
   scheduleBody.replaceChildren();
-  result.assignments.forEach((assignment) => {
-    const row = document.createElement("tr");
-    const preference = assignment.preferenceMatched ? "Preferred" : "Available";
-    const fitCell = document.createElement("td");
-    const fit = document.createElement("span");
-    fit.className = "pill";
-    fit.textContent = preference;
-    fitCell.appendChild(fit);
+  ZONES.forEach((zone) => {
+    const zoneAssignments = result.assignments.filter((assignment) => assignment.zone === zone);
+    if (!zoneAssignments.length) {
+      return;
+    }
 
-    row.append(
-      textCell(`${assignment.start} - ${assignment.end}`),
-      textCell(assignment.role),
-      textCell(assignment.employeeName),
-      fitCell,
-      textCell(assignment.notes || "")
-    );
-    scheduleBody.appendChild(row);
+    const headerRow = document.createElement("tr");
+    const headerCell = document.createElement("td");
+    headerCell.colSpan = 6;
+    headerCell.className = "zone-row";
+    headerCell.appendChild(zoneBadge(zone));
+    headerRow.appendChild(headerCell);
+    scheduleBody.appendChild(headerRow);
+
+    zoneAssignments.forEach((assignment) => {
+      const row = document.createElement("tr");
+      const preference = assignment.preferenceMatched ? "Preferred" : "Available";
+      const fitCell = document.createElement("td");
+      const fit = document.createElement("span");
+      fit.className = "pill";
+      fit.textContent = preference;
+      fitCell.appendChild(fit);
+
+      row.append(
+        textCell(assignment.zone),
+        textCell(`${assignment.start} - ${assignment.end}`),
+        textCell(assignment.role),
+        textCell(assignment.employeeName),
+        fitCell,
+        textCell(assignment.notes || "")
+      );
+      scheduleBody.appendChild(row);
+    });
   });
 }
 
@@ -268,6 +367,11 @@ function renderStats(result) {
     ["Preference match", `${result.stats.preferenceMatchRate}%`],
     ["Open slots", result.unfilled.length],
   ];
+
+  ZONES.forEach((zone) => {
+    const zoneStats = result.stats.byZone.find((item) => item.zone === zone);
+    cards.push([zone, zoneStats ? `${zoneStats.assignments} shift(s)` : "0 shift(s)"]);
+  });
 
   cards.forEach(([label, value]) => {
     const card = document.createElement("div");

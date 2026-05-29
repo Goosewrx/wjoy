@@ -111,7 +111,8 @@ td {
   vertical-align: middle;
 }
 
-input {
+input,
+select {
   background: #fbfcfa;
   border: 1px solid #cfd8cd;
   border-radius: 12px;
@@ -122,7 +123,8 @@ input {
   width: 100%;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 4px rgba(35, 104, 59, 0.12);
   outline: none;
@@ -184,6 +186,19 @@ button {
   font-size: 0.82rem;
   font-weight: 800;
   padding: 5px 10px;
+}
+
+.zone-row {
+  background: #eef6ec;
+  color: var(--green-dark);
+  font-weight: 800;
+}
+
+.zone-badge {
+  background: #dfeedd;
+  border-radius: 999px;
+  display: inline-block;
+  padding: 6px 12px;
 }
 
 .unfilled {

@@ -17,28 +17,54 @@
 
   function parseTime(value) {
     if (typeof value !== "string") {
-      throw new Error("Time must be a string in HH:MM format.");
+      throw new Error("Time must be a string like 6:30 AM or 6:30 PM.");
     }
 
-    const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) {
-      throw new Error(`Invalid time "${value}". Use HH:MM.`);
+    const cleaned = value.trim().replace(/\s+/g, " ");
+    const meridiemMatch = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    const twentyFourHourMatch = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+
+    if (meridiemMatch) {
+      let hours = Number(meridiemMatch[1]);
+      const minutes = Number(meridiemMatch[2] || "0");
+      const meridiem = meridiemMatch[3].toUpperCase();
+
+      if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+        throw new Error(`Invalid time "${value}". Use a valid 12-hour time.`);
+      }
+
+      if (meridiem === "AM" && hours === 12) {
+        hours = 0;
+      } else if (meridiem === "PM" && hours !== 12) {
+        hours += 12;
+      }
+
+      return hours * 60 + minutes;
     }
 
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-      throw new Error(`Invalid time "${value}". Use a valid 24-hour time.`);
+    if (twentyFourHourMatch) {
+      const hours = Number(twentyFourHourMatch[1]);
+      const minutes = Number(twentyFourHourMatch[2]);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        throw new Error(`Invalid time "${value}". Use a valid 12-hour time.`);
+      }
+      return hours * 60 + minutes;
     }
 
-    return hours * 60 + minutes;
+    throw new Error(`Invalid time "${value}". Use a time like 6:30 AM.`);
   }
 
   function formatTime(minutes) {
     const normalized = ((minutes % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
-    const hours = Math.floor(normalized / 60);
+    const totalHours = Math.floor(normalized / 60);
     const mins = normalized % 60;
-    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+    const meridiem = totalHours >= 12 ? "PM" : "AM";
+    const hours = totalHours % 12 || 12;
+    return `${hours}:${String(mins).padStart(2, "0")} ${meridiem}`;
+  }
+
+  function normalizeZone(value) {
+    return String(value || "General").trim();
   }
 
   function toArray(value) {
@@ -88,6 +114,7 @@
     return {
       id: shift.id || `shift-${index + 1}`,
       role,
+      zone: normalizeZone(shift.zone),
       start: window.start,
       end: window.end,
       startLabel: window.startLabel,
@@ -112,6 +139,7 @@
       id: employee.id || `employee-${index + 1}`,
       name,
       availability,
+      zones: toArray(employee.zones).map((zone) => zone.toLowerCase()),
       preferredRoles: toArray(employee.preferredRoles).map((role) => role.toLowerCase()),
       unavailableRoles: toArray(employee.unavailableRoles).map((role) => role.toLowerCase()),
       maxShifts: Number.isInteger(maxShifts) && maxShifts > 0 ? maxShifts : 99,
@@ -133,6 +161,10 @@
 
     if (employee.unavailableRoles.includes(role)) {
       reasons.push("not trained for role");
+    }
+
+    if (employee.zones.length && !employee.zones.includes(shift.zone.toLowerCase())) {
+      reasons.push("different zone");
     }
 
     if (!employee.availability.some((window) => covers(window, shift))) {
@@ -187,6 +219,7 @@
     return employees.filter(
       (employee) =>
         !employee.unavailableRoles.includes(role) &&
+        (!employee.zones.length || employee.zones.includes(shift.zone.toLowerCase())) &&
         employee.availability.some((window) => covers(window, shift))
     );
   }
@@ -257,11 +290,12 @@
       if (!candidates.length) {
         recordRejections(state, slot, employees);
         unfilled.push({
+          zone: slot.zone,
           role: slot.role,
           start: slot.startLabel,
           end: slot.endLabel,
           slotNumber: slot.slotNumber,
-          message: `No available employee for ${slot.role} ${slot.startLabel}-${slot.endLabel}.`,
+          message: `No available employee for ${slot.zone} / ${slot.role} ${slot.startLabel}-${slot.endLabel}.`,
         });
         return;
       }
@@ -270,6 +304,7 @@
       const assignment = {
         employeeId: employee.id,
         employeeName: employee.name,
+        zone: slot.zone,
         role: slot.role,
         start: slot.startLabel,
         end: slot.endLabel,
@@ -284,13 +319,14 @@
       state.byEmployee.get(employee.id).push({
         start: slot.start,
         end: slot.end,
+        zone: slot.zone,
         role: slot.role,
       });
     });
 
     return {
       assignments: assignments.sort(
-        (a, b) => a.startMinutes - b.startMinutes || a.role.localeCompare(b.role)
+        (a, b) => a.zone.localeCompare(b.zone) || a.startMinutes - b.startMinutes || a.role.localeCompare(b.role)
       ),
       unfilled,
       stats: buildStats(assignments, employees, state.reasonCounts),
@@ -322,12 +358,29 @@
       preferenceMatchRate: assignments.length
         ? Math.round((preferenceMatches / assignments.length) * 100)
         : 0,
+      byZone: buildZoneStats(assignments),
       byEmployee,
       rejectionReasons: Array.from(reasonCounts.entries()).map(([reason, count]) => ({
         reason,
         count,
       })),
     };
+  }
+
+  function buildZoneStats(assignments) {
+    const zones = new Map();
+
+    assignments.forEach((assignment) => {
+      const current = zones.get(assignment.zone) || { zone: assignment.zone, assignments: 0, hours: 0 };
+      current.assignments += 1;
+      current.hours += (assignment.endMinutes - assignment.startMinutes) / 60;
+      zones.set(assignment.zone, current);
+    });
+
+    return Array.from(zones.values()).map((zone) => ({
+      ...zone,
+      hours: Math.round(zone.hours * 10) / 10,
+    }));
   }
 
   return {

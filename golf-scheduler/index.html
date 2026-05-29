@@ -11,8 +11,8 @@
       <p class="eyebrow">Golf course operations</p>
       <h1>Build a daily staff schedule from coverage needs and availability.</h1>
       <p class="hero-text">
-        Add the shifts you need covered, enter who can work and what jobs they prefer, then generate
-        an assignment plan that flags uncovered slots before the day starts.
+        Add the shifts you need covered in Carts & Range, Rangers/Starters, and Shop Employees,
+        then generate an assignment plan that uses AM/PM times and flags uncovered slots before the day starts.
       </p>
     </header>
 
@@ -21,7 +21,7 @@
         <div class="panel-header">
           <div>
             <h2 id="shifts-title">Required shifts</h2>
-            <p>Use one row per job block. Increase “needed” when multiple people are required.</p>
+            <p>Choose one of the three zones for each job block. Increase “needed” when multiple people are required.</p>
           </div>
           <button id="add-shift" class="secondary" type="button">Add shift</button>
         </div>
@@ -29,6 +29,7 @@
           <table>
             <thead>
               <tr>
+                <th>Zone</th>
                 <th>Role</th>
                 <th>Start</th>
                 <th>End</th>
@@ -47,8 +48,8 @@
           <div>
             <h2 id="people-title">People</h2>
             <p>
-              Availability accepts one or more windows like
-              <strong>06:00-12:00, 13:00-18:00</strong>.
+              Zone can include one or more of the three areas. Availability accepts AM/PM windows like
+              <strong>6:00 AM-12:00 PM, 1:00 PM-6:00 PM</strong>.
             </p>
           </div>
           <button id="add-employee" class="secondary" type="button">Add person</button>
@@ -58,6 +59,7 @@
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Zones</th>
                 <th>Availability</th>
                 <th>Preferred roles</th>
                 <th>Cannot work</th>
@@ -87,6 +89,7 @@
             <table>
               <thead>
                 <tr>
+                  <th>Zone</th>
                   <th>Time</th>
                   <th>Role</th>
                   <th>Person</th>

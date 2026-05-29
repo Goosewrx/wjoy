@@ -2,9 +2,10 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { buildSchedule, parseTime, formatTime } = require("../scheduler");
 
-test("parseTime and formatTime round-trip valid HH:MM values", () => {
-  assert.equal(parseTime("06:30"), 390);
-  assert.equal(formatTime(390), "06:30");
+test("parseTime accepts AM/PM values and formatTime returns AM/PM labels", () => {
+  assert.equal(parseTime("6:30 AM"), 390);
+  assert.equal(parseTime("6:30 PM"), 1110);
+  assert.equal(formatTime(390), "6:30 AM");
 });
 
 test("buildSchedule fills slots with available employees and favors preferences", () => {
@@ -92,6 +93,37 @@ test("buildSchedule prioritizes constrained slots before broad shifts", () => {
   assert.deepEqual(
     result.assignments.map((assignment) => `${assignment.role}:${assignment.employeeName}`),
     ["Cart Barn:Chris", "Starter:Alex"]
+  );
+});
+
+test("buildSchedule keeps employees inside their assigned staffing zones", () => {
+  const result = buildSchedule({
+    shifts: [
+      { zone: "Carts & Range", role: "Cart Barn", start: "6:00 AM", end: "10:00 AM", needed: 1 },
+      { zone: "Shop Employees", role: "Pro Shop", start: "6:00 AM", end: "10:00 AM", needed: 1 },
+    ],
+    employees: [
+      {
+        name: "Harper",
+        zones: "Carts & Range",
+        availability: [{ start: "5:00 AM", end: "12:00 PM" }],
+        preferredRoles: "Cart Barn, Pro Shop",
+        maxShifts: 2,
+      },
+      {
+        name: "Indy",
+        zones: "Shop Employees",
+        availability: [{ start: "5:00 AM", end: "12:00 PM" }],
+        preferredRoles: "Pro Shop",
+        maxShifts: 1,
+      },
+    ],
+  });
+
+  assert.equal(result.unfilled.length, 0);
+  assert.deepEqual(
+    result.assignments.map((assignment) => `${assignment.zone}:${assignment.role}:${assignment.employeeName}`),
+    ["Carts & Range:Cart Barn:Harper", "Shop Employees:Pro Shop:Indy"]
   );
 });
 
