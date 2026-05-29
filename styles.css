@@ -162,6 +162,15 @@ th {
   justify-content: flex-end;
 }
 
+.hero-actions button.ghost {
+  border-color: rgba(255, 255, 255, 0.78);
+  color: #fff;
+}
+
+.hero-actions button.ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .auth-status {
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.25);
