@@ -134,6 +134,7 @@ const elements = {
 elements.leagueForm.addEventListener("submit", createLeague);
 elements.settingsForm.addEventListener("input", updateSettings);
 elements.leagueInfoForm.addEventListener("input", updateLeagueInfo);
+elements.leagueInfoForm.addEventListener("submit", saveLeagueInfo);
 elements.playerForm.addEventListener("submit", addPlayer);
 elements.rosterImportForm.addEventListener("submit", importRoster);
 elements.roundForm.addEventListener("submit", addRound);
@@ -365,6 +366,21 @@ function updateLeagueInfo(event) {
   }
 
   league[event.target.name] = event.target.value;
+  persistAndRender();
+}
+
+function saveLeagueInfo(event) {
+  event.preventDefault();
+  const league = activeLeague();
+  if (!league || !isManager()) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  league.bio = data.bio || "";
+  league.bylaws = data.bylaws || "";
+  league.generalInfo = data.generalInfo || "";
+  league.paymentLinks = data.paymentLinks || "";
   persistAndRender();
 }
 
