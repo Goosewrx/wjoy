@@ -181,6 +181,22 @@ function createInput(value, type = "text", options = {}) {
   return input;
 }
 
+function createAlwaysAvailableControl(checked = false) {
+  const label = document.createElement("label");
+  label.className = "checkbox-label";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = Boolean(checked);
+  checkbox.addEventListener("change", saveState);
+
+  const text = document.createElement("span");
+  text.textContent = "Always";
+
+  label.append(checkbox, text);
+  return label;
+}
+
 function createZoneSelect(value) {
   const select = document.createElement("select");
   ZONES.forEach((zone) => {
@@ -259,7 +275,8 @@ function renderEmployeeRow(employee = {}) {
   row.append(
     createCell(createInput(employee.name || "", "text", { placeholder: "Employee" })),
     createCell(createInput(employee.zones || inferZone(employee.preferredRoles), "text", { placeholder: ZONES.join(", ") })),
-    createCell(createInput(formatAvailability(employee.availability), "text", { placeholder: "6:00 AM-1:00 PM, 2:00 PM-6:00 PM" })),
+    createCell(createInput(employee.alwaysAvailable ? "" : formatAvailability(employee.availability), "text", { placeholder: "6:00 AM-1:00 PM, 2:00 PM-6:00 PM" })),
+    createCell(createAlwaysAvailableControl(employee.alwaysAvailable)),
     createCell(createInput(employee.preferredRoles || "", "text", { placeholder: "Starter, Ranger" })),
     createCell(createInput(employee.unavailableRoles || "", "text", { placeholder: "Cart Barn" })),
     createCell(createInput(employee.maxShifts || 2, "number", { min: 1 })),
@@ -301,12 +318,13 @@ function readFormState() {
   });
 
   const employees = Array.from(employeesBody.querySelectorAll("tr")).map((row) => {
-    const [name, zones, availability, preferredRoles, unavailableRoles, maxShifts] =
+    const [name, zones, availability, alwaysAvailable, preferredRoles, unavailableRoles, maxShifts] =
       row.querySelectorAll("input");
     return {
       name: name.value,
       zones: zones.value,
-      availability: parseAvailability(availability.value),
+      alwaysAvailable: alwaysAvailable.checked,
+      availability: alwaysAvailable.checked ? [] : parseAvailability(availability.value),
       preferredRoles: preferredRoles.value,
       unavailableRoles: unavailableRoles.value,
       maxShifts: maxShifts.value,

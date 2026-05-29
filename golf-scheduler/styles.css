@@ -130,6 +130,21 @@ select:focus {
   outline: none;
 }
 
+.checkbox-label {
+  align-items: center;
+  color: var(--green-dark);
+  display: flex;
+  font-weight: 800;
+  gap: 8px;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.checkbox-label input {
+  min-width: auto;
+  width: auto;
+}
+
 .mode-picker {
   align-items: center;
   color: var(--muted);

@@ -158,6 +158,27 @@ test("buildSchedule keeps employees inside their assigned staffing zones", () =>
   );
 });
 
+test("buildSchedule lets always-available employees cover any shift time", () => {
+  const result = buildSchedule({
+    shifts: [
+      { zone: "Carts & Range", role: "Cart Attendant", start: "5:00 AM", end: "9:00 AM", needed: 1 },
+    ],
+    employees: [
+      {
+        name: "Parker",
+        zones: "Carts & Range",
+        alwaysAvailable: true,
+        availability: [],
+        preferredRoles: "Cart Attendant",
+        maxShifts: 1,
+      },
+    ],
+  });
+
+  assert.equal(result.unfilled.length, 0);
+  assert.equal(result.assignments[0].employeeName, "Parker");
+});
+
 test("buildSchedule reports coverage gaps when availability is insufficient", () => {
   const result = buildSchedule({
     shifts: [{ role: "Pro Shop", start: "15:00", end: "20:00", needed: 2 }],

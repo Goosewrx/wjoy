@@ -140,14 +140,21 @@
       throw new Error(`Employee ${index + 1} needs a name.`);
     }
 
-    const availability = (employee.availability || []).map((window, windowIndex) =>
-      normalizeWindow(window, `${name} availability ${windowIndex + 1}`)
-    );
+    const alwaysAvailable =
+      employee.alwaysAvailable === true ||
+      employee.alwaysAvailable === "true" ||
+      employee.alwaysAvailable === "on";
+    const availability = alwaysAvailable
+      ? []
+      : (employee.availability || []).map((window, windowIndex) =>
+          normalizeWindow(window, `${name} availability ${windowIndex + 1}`)
+        );
 
     const maxShifts = Number.parseInt(employee.maxShifts || "99", 10);
     return {
       id: employee.id || `employee-${index + 1}`,
       name,
+      alwaysAvailable,
       availability,
       zones: toArray(employee.zones).map((zone) => zone.toLowerCase()),
       preferredRoles: toArray(employee.preferredRoles).map((role) => role.toLowerCase()),
@@ -177,7 +184,7 @@
       reasons.push("different zone");
     }
 
-    if (!employee.availability.some((window) => covers(window, shift))) {
+    if (!employee.alwaysAvailable && !employee.availability.some((window) => covers(window, shift))) {
       reasons.push("not available");
     }
 
@@ -230,7 +237,7 @@
       (employee) =>
         !employee.unavailableRoles.includes(role) &&
         (!employee.zones.length || employee.zones.includes(shift.zone.toLowerCase())) &&
-        employee.availability.some((window) => covers(window, shift))
+        (employee.alwaysAvailable || employee.availability.some((window) => covers(window, shift)))
     );
   }
 
