@@ -696,6 +696,79 @@ th {
   text-transform: uppercase;
 }
 
+.schedule-calendar-wrap {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+}
+
+.schedule-calendar-table {
+  border: 1px solid var(--ink);
+  border-radius: 0.35rem;
+  overflow: hidden;
+}
+
+.schedule-calendar-row {
+  align-items: center;
+  border-bottom: 1px solid var(--ink);
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(9rem, 0.55fr) minmax(14rem, 1fr) minmax(10rem, 0.8fr) minmax(7rem, 0.35fr);
+}
+
+.schedule-calendar-row:last-child {
+  border-bottom: 0;
+}
+
+.schedule-calendar-row > div,
+.schedule-calendar-row > span {
+  border-right: 1px solid var(--ink);
+  min-height: 2.2rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.schedule-calendar-row > div:last-child,
+.schedule-calendar-row > span:last-child {
+  border-right: 0;
+}
+
+.schedule-calendar-heading {
+  background: #fff;
+  font-weight: 900;
+  text-align: center;
+}
+
+.schedule-calendar-row.first-half > div:nth-child(2),
+.schedule-calendar-row.first-half > div:nth-child(3) {
+  background: #f6c99c;
+}
+
+.schedule-calendar-row.second-half > div:nth-child(2),
+.schedule-calendar-row.second-half > div:nth-child(3) {
+  background: #ffa014;
+}
+
+.schedule-calendar-row.rain > div:nth-child(2),
+.schedule-calendar-row.rain > div:nth-child(3) {
+  background: #20dce8;
+}
+
+.schedule-calendar-row.holiday > div {
+  background: #f51212;
+  color: #000;
+}
+
+.schedule-calendar-row.short-round > div:nth-child(3) {
+  background: #ead0dc;
+  font-weight: 900;
+}
+
+.schedule-calendar-row input {
+  background: rgba(255, 255, 255, 0.64);
+  border-color: transparent;
+  padding: 0.45rem;
+}
+
 .team-availability-group {
   background: #fff;
   border: 1px solid var(--line);
@@ -828,8 +901,14 @@ th {
   .auth-grid,
   .info-display,
   .tee-sheet-row,
+  .schedule-calendar-row,
   .metrics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-calendar-row > div,
+  .schedule-calendar-row > span {
+    border-right: 0;
   }
 
   .hero {

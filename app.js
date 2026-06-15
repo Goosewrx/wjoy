@@ -17,6 +17,7 @@ const seedData = {
       bylaws: "Players should confirm availability for each round. If you cannot play, reach out to the sub list to cover your spot.",
       generalInfo: "Rounds are managed in Golf Genius. Use this hub for league roster, team, payment, and availability visibility.",
       paymentLinks: DEFAULT_PAYMENT_LINKS,
+      scheduleCalendar: defaultScheduleCalendarRows(),
       messages: [
         {
           id: "message-1",
@@ -136,6 +137,7 @@ const elements = {
   rosterImportStatus: document.querySelector("#roster-import-status"),
   roundForm: document.querySelector("#round-form"),
   roundList: document.querySelector("#round-list"),
+  scheduleCalendarTable: document.querySelector("#schedule-calendar-table"),
   scheduleStatus: document.querySelector("#schedule-status"),
   settingsForm: document.querySelector("#settings-form"),
   teamCaptainSelect: document.querySelector("#team-captain-select"),
@@ -152,6 +154,7 @@ elements.playerForm.addEventListener("submit", addPlayer);
 elements.rosterImportForm.addEventListener("submit", importRoster);
 elements.roundForm.addEventListener("submit", addRound);
 elements.teamForm.addEventListener("submit", addTeam);
+document.querySelector("#add-schedule-row").addEventListener("click", addScheduleCalendarRow);
 elements.memberLoginForm.addEventListener("submit", loginMember);
 elements.managerLoginForm.addEventListener("submit", loginManager);
 elements.messageForm.addEventListener("submit", addMessage);
@@ -203,6 +206,7 @@ function normalizeState(candidate) {
     bylaws: league.bylaws || "",
     generalInfo: league.generalInfo || "",
     paymentLinks: normalizePaymentLinksForLeague(league.paymentLinks),
+    scheduleCalendar: Array.isArray(league.scheduleCalendar) ? league.scheduleCalendar : defaultScheduleCalendarRows(),
     messages: Array.isArray(league.messages) ? league.messages : [],
     directMessages: Array.isArray(league.directMessages) ? league.directMessages : [],
     players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
@@ -255,6 +259,29 @@ function normalizeTeeSheet(teeSheet) {
         }))
       : []
   };
+}
+
+function defaultScheduleCalendarRows() {
+  return [
+    ["2026-05-13", "1st Half - Week 1", "6 holes"],
+    ["2026-05-20", "1st Half - Week 2", "6 holes"],
+    ["2026-05-27", "1st Half - Week 3", ""],
+    ["2026-06-03", "1st Half - Week 4", ""],
+    ["2026-06-10", "1st Half - Week 5", ""],
+    ["2026-06-17", "1st Half - Rain Date", ""],
+    ["2026-06-24", "2nd Half - Week 1", ""],
+    ["2026-07-01", "OFF - Holiday 4th of July Week", "Holiday"],
+    ["2026-07-08", "2nd Half - Week 2", ""],
+    ["2026-07-15", "2nd Half - Week 3", ""],
+    ["2026-07-22", "2nd Half - Week 4", "6 holes"],
+    ["2026-07-29", "2nd Half - Week 5", "6 holes"],
+    ["2026-08-05", "2nd Half - Rain Date", ""]
+  ].map(([date, week, notes]) => ({
+    id: uid("schedule-row"),
+    date,
+    week,
+    notes
+  }));
 }
 
 function normalizePaymentLinksForLeague(value) {
@@ -347,6 +374,7 @@ function createLeague(event) {
     bylaws: "",
     generalInfo: "",
     paymentLinks: DEFAULT_PAYMENT_LINKS,
+    scheduleCalendar: defaultScheduleCalendarRows(),
     messages: [],
     directMessages: [],
     players: [],
@@ -877,6 +905,7 @@ function render() {
   renderDirectMessages(league);
   renderPlayers(league);
   renderTeams(league);
+  renderScheduleCalendar(league);
   renderRounds(league);
   renderHubPages();
 }
@@ -1025,6 +1054,101 @@ function renderMessages(league) {
     `;
     elements.messageList.append(article);
   });
+}
+
+function renderScheduleCalendar(league) {
+  elements.scheduleCalendarTable.replaceChildren();
+
+  const heading = document.createElement("div");
+  heading.className = "schedule-calendar-row schedule-calendar-heading";
+  heading.innerHTML = "<span>Date</span><span>Week #</span><span>Notes</span><span>Actions</span>";
+  elements.scheduleCalendarTable.append(heading);
+
+  league.scheduleCalendar.forEach((row) => {
+    const rowElement = document.createElement("div");
+    rowElement.className = `schedule-calendar-row${scheduleRowClass(row)}`;
+
+    const dateCell = document.createElement("div");
+    const weekCell = document.createElement("div");
+    const notesCell = document.createElement("div");
+    const actionCell = document.createElement("div");
+
+    if (isManager()) {
+      dateCell.append(calendarInput("date", row.date, (value) => updateScheduleCalendarRow(row.id, "date", value)));
+      weekCell.append(calendarInput("text", row.week, (value) => updateScheduleCalendarRow(row.id, "week", value)));
+      notesCell.append(calendarInput("text", row.notes, (value) => updateScheduleCalendarRow(row.id, "notes", value)));
+      actionCell.append(actionButton("Remove", () => removeScheduleCalendarRow(row.id), "danger ghost"));
+    } else {
+      dateCell.textContent = formatDate(row.date);
+      weekCell.textContent = row.week;
+      notesCell.textContent = row.notes || "";
+      actionCell.textContent = "";
+    }
+
+    rowElement.append(dateCell, weekCell, notesCell, actionCell);
+    elements.scheduleCalendarTable.append(rowElement);
+  });
+}
+
+function calendarInput(type, value, onChange) {
+  const input = document.createElement("input");
+  input.type = type;
+  input.value = value || "";
+  input.addEventListener("change", () => onChange(input.value));
+  return input;
+}
+
+function scheduleRowClass(row) {
+  const text = `${row.week} ${row.notes}`.toLowerCase();
+  if (text.includes("holiday") || text.includes("off")) {
+    return " holiday";
+  }
+  if (text.includes("rain")) {
+    return " rain";
+  }
+  if (text.includes("2nd half")) {
+    return " second-half";
+  }
+  if (text.includes("6 holes")) {
+    return " short-round";
+  }
+  return " first-half";
+}
+
+function addScheduleCalendarRow() {
+  const league = activeLeague();
+  if (!league || !isManager()) {
+    return;
+  }
+
+  league.scheduleCalendar.push({
+    id: uid("schedule-row"),
+    date: "",
+    week: "New schedule row",
+    notes: ""
+  });
+  persistAndRender();
+}
+
+function updateScheduleCalendarRow(rowId, field, value) {
+  const league = activeLeague();
+  const row = league?.scheduleCalendar.find((item) => item.id === rowId);
+  if (!row || !isManager()) {
+    return;
+  }
+
+  row[field] = value;
+  persistAndRender();
+}
+
+function removeScheduleCalendarRow(rowId) {
+  const league = activeLeague();
+  if (!league || !isManager()) {
+    return;
+  }
+
+  league.scheduleCalendar = league.scheduleCalendar.filter((row) => row.id !== rowId);
+  persistAndRender();
 }
 
 function renderDirectMessages(league) {
