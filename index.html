@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fairway League Hub</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">FL</span>
+          <div>
+            <p class="eyebrow">Golf operations</p>
+            <h1>League Hub</h1>
+          </div>
+        </div>
+
+        <section class="panel compact manager-only">
+          <h2>Add league</h2>
+          <form id="league-form" class="stacked-form">
+            <label>
+              League name
+              <input name="name" type="text" placeholder="Thursday Night Scramble" required />
+            </label>
+            <label>
+              Season
+              <input name="season" type="text" placeholder="Summer 2026" required />
+            </label>
+            <div class="form-grid two">
+              <label>
+                Roster spots
+                <input name="rosterLimit" type="number" min="1" value="24" required />
+              </label>
+              <label>
+                Dues
+                <input name="dues" type="number" min="0" step="1" value="120" required />
+              </label>
+            </div>
+            <button type="submit">Create league</button>
+          </form>
+        </section>
+
+        <section class="league-list-wrap">
+          <div class="section-heading">
+            <h2>Your leagues</h2>
+            <span id="league-count" class="pill">0</span>
+          </div>
+          <div id="league-list" class="league-list" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <main class="content">
+        <section class="hero">
+          <img id="league-logo" class="league-logo" alt="League logo" hidden />
+          <div>
+            <p class="eyebrow">League command center</p>
+            <h2 id="active-league-title">Create a league to get started</h2>
+            <p id="active-league-subtitle">Track rosters, dues, schedule, tee times, and available spots in one place.</p>
+          </div>
+          <div class="hero-actions">
+            <div id="auth-status" class="auth-status" hidden></div>
+            <button id="logout-button" type="button" class="ghost" hidden>Log out</button>
+            <button id="delete-league" type="button" class="danger ghost manager-only" hidden>Delete league</button>
+          </div>
+        </section>
+
+        <section id="empty-state" class="empty-state">
+          <h2>No leagues yet</h2>
+          <p>Create your first golf league from the sidebar to open the hub.</p>
+        </section>
+
+        <section id="auth-panel" class="panel auth-panel" hidden>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">League access</p>
+              <h2>Sign in to view this league</h2>
+            </div>
+            <span class="pill">Roster email required</span>
+          </div>
+          <div class="auth-grid">
+            <form id="member-login-form" class="stacked-form">
+              <h3>Member login</h3>
+              <p class="muted">No password is required. Your email must match this league roster.</p>
+              <label>
+                Email address
+                <input name="email" type="email" placeholder="player@example.com" required />
+              </label>
+              <button type="submit">Enter league portal</button>
+            </form>
+            <form id="manager-login-form" class="stacked-form">
+              <h3>League manager</h3>
+              <p id="manager-login-help" class="muted">Set or enter the manager passcode for full editing access.</p>
+              <label>
+                Manager passcode
+                <input name="passcode" type="password" minlength="4" required />
+              </label>
+              <button type="submit">Unlock manager mode</button>
+            </form>
+          </div>
+          <p id="auth-message" class="auth-message" aria-live="polite"></p>
+        </section>
+
+        <div id="league-workspace" hidden>
+          <nav id="hub-nav" class="hub-nav" aria-label="League hub pages">
+            <button type="button" data-hub-page="overview">Overview</button>
+            <button type="button" data-hub-page="bylaws">By-laws</button>
+            <button type="button" data-hub-page="roster">Roster & Teams</button>
+            <button type="button" data-hub-page="schedule">Schedule & Tee Sheet</button>
+            <button type="button" data-hub-page="messages">Messages</button>
+            <button type="button" data-hub-page="admin" class="manager-only">Manager Tools</button>
+          </nav>
+
+          <section class="metrics-grid hub-page" data-hub-page="overview" id="metrics"></section>
+
+          <section class="panel hub-page" data-hub-page="overview">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League information</p>
+                <h2>Bio and general notes</h2>
+              </div>
+              <span class="pill">Read only</span>
+            </div>
+            <div id="league-info-display" class="info-display"></div>
+          </section>
+
+          <section class="panel hub-page" data-hub-page="bylaws">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League rules</p>
+                <h2>By-laws</h2>
+              </div>
+              <span class="pill">Read only</span>
+            </div>
+            <div id="bylaws-display" class="info-display"></div>
+          </section>
+
+          <section class="panel hub-page" data-hub-page="overview">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Payments</p>
+                <h2>Pay league dues online</h2>
+              </div>
+              <span class="pill">Member visible</span>
+            </div>
+            <div id="payment-link-list" class="payment-link-list"></div>
+          </section>
+
+          <section class="panel hub-page" data-hub-page="roster">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Customer view</p>
+                <h2>Scramble teams, roster, and subs</h2>
+              </div>
+              <span class="pill">Visible directory</span>
+            </div>
+            <div class="directory-grid">
+              <section>
+                <h3>Roster</h3>
+                <div id="public-roster-list" class="directory-list"></div>
+              </section>
+              <section>
+                <h3>Scramble teams</h3>
+                <div id="public-team-list" class="directory-list"></div>
+              </section>
+              <section>
+                <h3>Subs</h3>
+                <div id="public-sub-list" class="directory-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="panel hub-page" data-hub-page="messages">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Message portal</p>
+                <h2>League messages</h2>
+              </div>
+              <span class="pill">Members only</span>
+            </div>
+            <form id="message-form" class="stacked-form">
+              <label>
+                Message
+                <textarea name="message" rows="3" placeholder="Post an update, ask for a sub, or share league information." required></textarea>
+              </label>
+              <button type="submit">Post message</button>
+            </form>
+            <div id="message-list" class="message-list"></div>
+            <div class="direct-message-box">
+              <div>
+                <h3>Direct messages</h3>
+                <p class="muted">Send private portal messages without exposing emails or phone numbers.</p>
+              </div>
+              <form id="direct-message-form" class="stacked-form">
+                <label>
+                  Send to
+                  <select name="recipientId" id="direct-recipient-select" required></select>
+                </label>
+                <label>
+                  Message
+                  <textarea name="message" rows="3" placeholder="Write a private message to another league member." required></textarea>
+                </label>
+                <button type="submit">Send direct message</button>
+              </form>
+              <div id="direct-message-list" class="message-list"></div>
+            </div>
+          </section>
+
+          <section class="panel manager-only hub-page" data-hub-page="admin">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League setup</p>
+                <h2>Settings</h2>
+              </div>
+              <span class="pill">Autosaves</span>
+            </div>
+            <form id="settings-form" class="form-grid four">
+              <label>
+                Name
+                <input name="name" type="text" required />
+              </label>
+              <label>
+                Season
+                <input name="season" type="text" required />
+              </label>
+              <label>
+                Roster spots
+                <input name="rosterLimit" type="number" min="1" required />
+              </label>
+              <label>
+                Dues per player
+                <input name="dues" type="number" min="0" step="1" required />
+              </label>
+            </form>
+          </section>
+
+          <section class="panel manager-only hub-page" data-hub-page="admin">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League info</p>
+                <h2>Bio, by-laws, and general notes</h2>
+              </div>
+              <span class="pill">Autosaves</span>
+            </div>
+            <form id="league-info-form" class="stacked-form">
+              <div class="branding-controls">
+                <label>
+                  League logo
+                  <input id="league-logo-input" name="logo" type="file" accept="image/*" />
+                </label>
+                <button id="clear-league-logo" type="button" class="ghost">Clear logo</button>
+              </div>
+              <div class="form-grid two">
+                <label>
+                  Display text size
+                  <select name="textSize">
+                    <option value="normal">Normal</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra large</option>
+                  </select>
+                </label>
+                <label>
+                  Text field height
+                  <select name="fieldSize">
+                    <option value="normal">Normal</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra large</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                League bio
+                <textarea name="bio" rows="4" placeholder="League history, format, and what new players should know."></textarea>
+              </label>
+              <label>
+                By-laws
+                <textarea name="bylaws" rows="5" placeholder="Rules, eligibility, scoring policy, payment policy, and conduct expectations."></textarea>
+              </label>
+              <label>
+                General information
+                <textarea name="generalInfo" rows="4" placeholder="Golf Genius link, announcements, contact instructions, weather policy, etc."></textarea>
+              </label>
+              <label>
+                Payment links
+                <textarea name="paymentLinks" rows="4" placeholder="Oaks/CandiaWoods Payment Portal | https://secure.east.prophetservices.com/Oaks_CandiaWoodsWS3/(S(sza4uk4dmpmjyadqdh1bkdlh))/"></textarea>
+              </label>
+              <button type="submit">Save league info</button>
+            </form>
+          </section>
+
+          <div class="workspace-grid">
+            <section class="panel manager-only hub-page" data-hub-page="admin">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Roster</p>
+                  <h2>Players and payments</h2>
+                </div>
+                <span id="roster-status" class="pill"></span>
+              </div>
+
+              <form id="player-form" class="stacked-form">
+                <div class="form-grid three">
+                  <label>
+                    Player name
+                    <input name="name" type="text" placeholder="Jordan Spieth" required />
+                  </label>
+                  <label>
+                    Email
+                    <input name="email" type="email" placeholder="player@example.com" />
+                  </label>
+                  <label>
+                    Phone
+                    <input name="phone" type="tel" placeholder="555-0134" />
+                  </label>
+                </div>
+                <div class="form-grid three">
+                  <label>
+                    Status
+                    <select name="status">
+                      <option>Active</option>
+                      <option>Waitlist</option>
+                      <option>Substitute</option>
+                    </select>
+                  </label>
+                  <label>
+                    Payment
+                    <select name="paid">
+                      <option value="unpaid">Unpaid</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </label>
+                  <label>
+                    Notes
+                    <input name="notes" type="text" placeholder="Cart partner, handicap, etc." />
+                  </label>
+                </div>
+                <button type="submit">Add player</button>
+              </form>
+
+              <form id="roster-import-form" class="import-box">
+                <div>
+                  <h3>Import roster from spreadsheet</h3>
+                  <p class="muted">Upload an Excel-exported CSV/TSV with columns like name, email, phone, status, paid, notes, and team.</p>
+                </div>
+                <label>
+                  Roster file
+                  <input name="rosterFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" required />
+                </label>
+                <button type="submit">Import roster</button>
+                <p id="roster-import-status" class="muted" aria-live="polite"></p>
+              </form>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Status</th>
+                      <th>Payment</th>
+                      <th>Portal</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="player-table"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel manager-only hub-page" data-hub-page="admin">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Scramble teams</p>
+                  <h2>Set team rosters</h2>
+                </div>
+                <span id="team-status" class="pill"></span>
+              </div>
+
+              <form id="team-form" class="stacked-form">
+                <div class="form-grid two">
+                  <label>
+                    Team name
+                    <input name="name" type="text" placeholder="Birdie Brigade" required />
+                  </label>
+                  <label>
+                    Captain
+                    <select name="captainId" id="team-captain-select"></select>
+                  </label>
+                </div>
+                <div class="form-grid two">
+                  <label>
+                    Team color
+                    <input name="color" type="text" placeholder="Forest green" />
+                  </label>
+                  <label>
+                    Notes
+                    <input name="notes" type="text" placeholder="Match-play pairings, cart group, etc." />
+                  </label>
+                </div>
+                <button type="submit">Create team</button>
+              </form>
+
+              <div id="team-list" class="team-list"></div>
+            </section>
+
+            <section class="panel hub-page" data-hub-page="schedule">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Schedule</p>
+                  <h2>Rounds and tee times</h2>
+                  <p class="muted">Every active roster player is assumed to be playing each round unless they mark that they cannot make that week.</p>
+                </div>
+                <span id="schedule-status" class="pill"></span>
+              </div>
+
+              <section class="schedule-calendar-wrap">
+                <div class="section-heading">
+                  <div>
+                    <h3>League schedule calendar</h3>
+                    <p class="muted">Manager-editable date, week, standard start time, tee groups, and note table. Playable rows generate rounds automatically.</p>
+                  </div>
+                  <button id="add-schedule-row" type="button" class="manager-only">Add calendar row</button>
+                </div>
+                <div class="schedule-calendar-table" id="schedule-calendar-table"></div>
+              </section>
+
+              <div id="round-list" class="round-list"></div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <template id="metric-card-template">
+      <article class="metric-card">
+        <p></p>
+        <strong></strong>
+        <span></span>
+      </article>
+    </template>
+
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
