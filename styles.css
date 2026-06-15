@@ -713,7 +713,7 @@ th {
   border-bottom: 1px solid var(--ink);
   display: grid;
   gap: 0;
-  grid-template-columns: minmax(9rem, 0.55fr) minmax(14rem, 1fr) minmax(10rem, 0.8fr) minmax(7rem, 0.35fr);
+  grid-template-columns: minmax(9rem, 0.6fr) minmax(14rem, 1fr) minmax(7rem, 0.45fr) minmax(5rem, 0.35fr) minmax(6rem, 0.35fr) minmax(10rem, 0.75fr) minmax(7rem, 0.35fr);
 }
 
 .schedule-calendar-row:last-child {
@@ -739,17 +739,26 @@ th {
 }
 
 .schedule-calendar-row.first-half > div:nth-child(2),
-.schedule-calendar-row.first-half > div:nth-child(3) {
+.schedule-calendar-row.first-half > div:nth-child(3),
+.schedule-calendar-row.first-half > div:nth-child(4),
+.schedule-calendar-row.first-half > div:nth-child(5),
+.schedule-calendar-row.first-half > div:nth-child(6) {
   background: #f6c99c;
 }
 
 .schedule-calendar-row.second-half > div:nth-child(2),
-.schedule-calendar-row.second-half > div:nth-child(3) {
+.schedule-calendar-row.second-half > div:nth-child(3),
+.schedule-calendar-row.second-half > div:nth-child(4),
+.schedule-calendar-row.second-half > div:nth-child(5),
+.schedule-calendar-row.second-half > div:nth-child(6) {
   background: #ffa014;
 }
 
 .schedule-calendar-row.rain > div:nth-child(2),
-.schedule-calendar-row.rain > div:nth-child(3) {
+.schedule-calendar-row.rain > div:nth-child(3),
+.schedule-calendar-row.rain > div:nth-child(4),
+.schedule-calendar-row.rain > div:nth-child(5),
+.schedule-calendar-row.rain > div:nth-child(6) {
   background: #20dce8;
 }
 
@@ -758,7 +767,7 @@ th {
   color: #000;
 }
 
-.schedule-calendar-row.short-round > div:nth-child(3) {
+.schedule-calendar-row.short-round > div:nth-child(6) {
   background: #ead0dc;
   font-weight: 900;
 }

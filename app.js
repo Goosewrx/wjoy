@@ -206,7 +206,7 @@ function normalizeState(candidate) {
     bylaws: league.bylaws || "",
     generalInfo: league.generalInfo || "",
     paymentLinks: normalizePaymentLinksForLeague(league.paymentLinks),
-    scheduleCalendar: Array.isArray(league.scheduleCalendar) ? league.scheduleCalendar : defaultScheduleCalendarRows(),
+    scheduleCalendar: normalizeScheduleCalendar(league.scheduleCalendar),
     messages: Array.isArray(league.messages) ? league.messages : [],
     directMessages: Array.isArray(league.directMessages) ? league.directMessages : [],
     players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
@@ -233,12 +233,15 @@ function normalizeState(candidate) {
       : []
   }));
 
-  return {
+  const normalized = {
     selectedLeagueId: leagues.some((league) => league.id === candidate.selectedLeagueId)
       ? candidate.selectedLeagueId
       : leagues[0]?.id ?? null,
     leagues
   };
+
+  normalized.leagues.forEach((league) => syncCalendarRounds(league));
+  return normalized;
 }
 
 function normalizePlayer(league, player) {
@@ -261,26 +264,41 @@ function normalizeTeeSheet(teeSheet) {
   };
 }
 
+function normalizeScheduleCalendar(rows) {
+  return (Array.isArray(rows) ? rows : defaultScheduleCalendarRows()).map((row) => ({
+    id: row.id || uid("schedule-row"),
+    date: row.date || "",
+    week: row.week || "",
+    notes: row.notes || "",
+    teeTime: row.teeTime || (isPlayableScheduleRow(row) ? "17:00" : ""),
+    spots: Number(row.spots ?? (isPlayableScheduleRow(row) ? 5 : 0)),
+    teeInterval: Number(row.teeInterval || 10)
+  }));
+}
+
 function defaultScheduleCalendarRows() {
   return [
-    ["2026-05-13", "1st Half - Week 1", "6 holes"],
-    ["2026-05-20", "1st Half - Week 2", "6 holes"],
-    ["2026-05-27", "1st Half - Week 3", ""],
-    ["2026-06-03", "1st Half - Week 4", ""],
-    ["2026-06-10", "1st Half - Week 5", ""],
-    ["2026-06-17", "1st Half - Rain Date", ""],
-    ["2026-06-24", "2nd Half - Week 1", ""],
-    ["2026-07-01", "OFF - Holiday 4th of July Week", "Holiday"],
-    ["2026-07-08", "2nd Half - Week 2", ""],
-    ["2026-07-15", "2nd Half - Week 3", ""],
-    ["2026-07-22", "2nd Half - Week 4", "6 holes"],
-    ["2026-07-29", "2nd Half - Week 5", "6 holes"],
-    ["2026-08-05", "2nd Half - Rain Date", ""]
-  ].map(([date, week, notes]) => ({
+    ["2026-05-13", "1st Half - Week 1", "6 holes", "17:00", 5, 10],
+    ["2026-05-20", "1st Half - Week 2", "6 holes", "17:00", 5, 10],
+    ["2026-05-27", "1st Half - Week 3", "", "17:00", 5, 10],
+    ["2026-06-03", "1st Half - Week 4", "", "17:00", 5, 10],
+    ["2026-06-10", "1st Half - Week 5", "", "17:00", 5, 10],
+    ["2026-06-17", "1st Half - Rain Date", "", "17:00", 5, 10],
+    ["2026-06-24", "2nd Half - Week 1", "", "17:00", 5, 10],
+    ["2026-07-01", "OFF - Holiday 4th of July Week", "Holiday", "", 0, 10],
+    ["2026-07-08", "2nd Half - Week 2", "", "17:00", 5, 10],
+    ["2026-07-15", "2nd Half - Week 3", "", "17:00", 5, 10],
+    ["2026-07-22", "2nd Half - Week 4", "6 holes", "17:00", 5, 10],
+    ["2026-07-29", "2nd Half - Week 5", "6 holes", "17:00", 5, 10],
+    ["2026-08-05", "2nd Half - Rain Date", "", "17:00", 5, 10]
+  ].map(([date, week, notes, teeTime, spots, teeInterval]) => ({
     id: uid("schedule-row"),
     date,
     week,
-    notes
+    notes,
+    teeTime,
+    spots,
+    teeInterval
   }));
 }
 
@@ -299,6 +317,7 @@ function normalizePaymentLinksForLeague(value) {
 }
 
 function saveState() {
+  state.leagues.forEach((league) => syncCalendarRounds(league));
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -739,6 +758,51 @@ function assignPlayerToImportedTeam(league, playerId, teamName) {
   }
 }
 
+function syncCalendarRounds(league) {
+  if (!league) {
+    return;
+  }
+
+  const playableRows = league.scheduleCalendar.filter(isPlayableScheduleRow);
+  const playableIds = new Set(playableRows.map((row) => row.id));
+  league.rounds = league.rounds.filter((round) => !round.generatedFromCalendar || playableIds.has(round.calendarRowId));
+
+  playableRows.forEach((row) => {
+    let round = league.rounds.find((item) => item.generatedFromCalendar && item.calendarRowId === row.id);
+    if (!round) {
+      round = {
+        id: uid("round"),
+        generatedFromCalendar: true,
+        calendarRowId: row.id,
+        availability: {},
+        substitutions: [],
+        teeSheet: {
+          times: {},
+          extra: []
+        }
+      };
+      league.rounds.push(round);
+    }
+
+    round.generatedFromCalendar = true;
+    round.calendarRowId = row.id;
+    round.course = row.week || "League Round";
+    round.date = row.date;
+    round.teeTime = row.teeTime || "17:00";
+    round.spots = Number(row.spots || 5);
+    round.teeInterval = Number(row.teeInterval || 10);
+    round.notes = row.notes || "";
+    round.availability = round.availability && typeof round.availability === "object" ? round.availability : {};
+    round.substitutions = Array.isArray(round.substitutions) ? round.substitutions : [];
+    round.teeSheet = normalizeTeeSheet(round.teeSheet);
+  });
+}
+
+function isPlayableScheduleRow(row) {
+  const text = `${row?.week || ""} ${row?.notes || ""}`.toLowerCase();
+  return Boolean(row?.date) && !text.includes("off") && !text.includes("holiday");
+}
+
 function addRound(event) {
   event.preventDefault();
   if (!isManager()) {
@@ -897,6 +961,7 @@ function render() {
   elements.leagueInfoForm.generalInfo.value = league.generalInfo;
   elements.leagueInfoForm.paymentLinks.value = league.paymentLinks;
 
+  syncCalendarRounds(league);
   renderMetrics(league);
   renderLeagueInfoDisplay(league);
   renderPaymentLinks(league);
@@ -1061,7 +1126,7 @@ function renderScheduleCalendar(league) {
 
   const heading = document.createElement("div");
   heading.className = "schedule-calendar-row schedule-calendar-heading";
-  heading.innerHTML = "<span>Date</span><span>Week #</span><span>Notes</span><span>Actions</span>";
+  heading.innerHTML = "<span>Date</span><span>Week #</span><span>Start</span><span>Groups</span><span>Interval</span><span>Notes</span><span>Actions</span>";
   elements.scheduleCalendarTable.append(heading);
 
   league.scheduleCalendar.forEach((row) => {
@@ -1070,22 +1135,31 @@ function renderScheduleCalendar(league) {
 
     const dateCell = document.createElement("div");
     const weekCell = document.createElement("div");
+    const startCell = document.createElement("div");
+    const groupsCell = document.createElement("div");
+    const intervalCell = document.createElement("div");
     const notesCell = document.createElement("div");
     const actionCell = document.createElement("div");
 
     if (isManager()) {
       dateCell.append(calendarInput("date", row.date, (value) => updateScheduleCalendarRow(row.id, "date", value)));
       weekCell.append(calendarInput("text", row.week, (value) => updateScheduleCalendarRow(row.id, "week", value)));
+      startCell.append(calendarInput("time", row.teeTime, (value) => updateScheduleCalendarRow(row.id, "teeTime", value)));
+      groupsCell.append(calendarInput("number", row.spots, (value) => updateScheduleCalendarRow(row.id, "spots", value)));
+      intervalCell.append(calendarInput("number", row.teeInterval, (value) => updateScheduleCalendarRow(row.id, "teeInterval", value)));
       notesCell.append(calendarInput("text", row.notes, (value) => updateScheduleCalendarRow(row.id, "notes", value)));
       actionCell.append(actionButton("Remove", () => removeScheduleCalendarRow(row.id), "danger ghost"));
     } else {
       dateCell.textContent = formatDate(row.date);
       weekCell.textContent = row.week;
+      startCell.textContent = isPlayableScheduleRow(row) ? formatTime(row.teeTime) : "";
+      groupsCell.textContent = isPlayableScheduleRow(row) ? row.spots : "";
+      intervalCell.textContent = isPlayableScheduleRow(row) ? `${row.teeInterval} min` : "";
       notesCell.textContent = row.notes || "";
       actionCell.textContent = "";
     }
 
-    rowElement.append(dateCell, weekCell, notesCell, actionCell);
+    rowElement.append(dateCell, weekCell, startCell, groupsCell, intervalCell, notesCell, actionCell);
     elements.scheduleCalendarTable.append(rowElement);
   });
 }
@@ -1094,6 +1168,9 @@ function calendarInput(type, value, onChange) {
   const input = document.createElement("input");
   input.type = type;
   input.value = value || "";
+  if (type === "number") {
+    input.min = "0";
+  }
   input.addEventListener("change", () => onChange(input.value));
   return input;
 }
@@ -1125,6 +1202,9 @@ function addScheduleCalendarRow() {
     id: uid("schedule-row"),
     date: "",
     week: "New schedule row",
+    teeTime: "17:00",
+    spots: 5,
+    teeInterval: 10,
     notes: ""
   });
   persistAndRender();
@@ -1137,7 +1217,8 @@ function updateScheduleCalendarRow(rowId, field, value) {
     return;
   }
 
-  row[field] = value;
+  row[field] = field === "spots" || field === "teeInterval" ? Number(value || 0) : value;
+  syncCalendarRounds(league);
   persistAndRender();
 }
 
@@ -1148,6 +1229,7 @@ function removeScheduleCalendarRow(rowId) {
   }
 
   league.scheduleCalendar = league.scheduleCalendar.filter((row) => row.id !== rowId);
+  syncCalendarRounds(league);
   persistAndRender();
 }
 
@@ -1715,10 +1797,14 @@ function renderRounds(league) {
       card.append(substitutionList);
       if (isManager()) {
         card.append(roundSubstitutionControls(league, round));
-        card.append(actionButton("Remove round", () => {
-          league.rounds = league.rounds.filter((item) => item.id !== round.id);
-          persistAndRender();
-        }, "danger ghost"));
+        if (round.generatedFromCalendar) {
+          card.append(actionButton("Remove calendar row", () => removeScheduleCalendarRow(round.calendarRowId), "danger ghost"));
+        } else {
+          card.append(actionButton("Remove round", () => {
+            league.rounds = league.rounds.filter((item) => item.id !== round.id);
+            persistAndRender();
+          }, "danger ghost"));
+        }
       }
       elements.roundList.append(card);
     });
