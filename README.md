@@ -12,6 +12,20 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000`.
 
+## Supabase setup
+
+Run `supabase/schema.sql` in the Supabase SQL editor, then copy `supabase-config.example.js` to `supabase-config.js` and fill in your project URL and anon key.
+
+```js
+window.LEAGUE_HUB_SUPABASE = {
+  url: "https://YOUR-PROJECT.supabase.co",
+  anonKey: "YOUR-SUPABASE-ANON-KEY",
+  stateId: "primary"
+};
+```
+
+When `supabase-config.js` is present, the app stores league data in Supabase. Without it, the app uses browser storage for local development.
+
 ## Features
 
 - Create, switch between, and delete leagues.

@@ -1,6 +1,7 @@
 const STORAGE_KEY = "fairway-league-hub";
 const AUTH_KEY = "fairway-league-hub-auth";
-const MANAGER_PASSCODE_KEY = "fairway-league-hub-manager-passcode";
+const SUPABASE_CONFIG = window.LEAGUE_HUB_SUPABASE || null;
+const SUPABASE_STATE_ID = SUPABASE_CONFIG?.stateId || "primary";
 const PAYMENT_PORTAL_URL = "https://secure.east.prophetservices.com/Oaks_CandiaWoodsWS3/(S(sza4uk4dmpmjyadqdh1bkdlh))/";
 const DEFAULT_PAYMENT_LINKS = `Oaks/CandiaWoods Payment Portal | ${PAYMENT_PORTAL_URL}`;
 
@@ -99,7 +100,7 @@ const seedData = {
   ]
 };
 
-let state = loadState();
+let state = normalizeState(structuredClone(seedData));
 let auth = loadAuth();
 let activeHubPage = "overview";
 
@@ -172,9 +173,28 @@ elements.logoutButton.addEventListener("click", logout);
 elements.deleteLeague.addEventListener("click", deleteActiveLeague);
 elements.hubNav.addEventListener("click", changeHubPage);
 
-render();
+initializeApp();
 
-function loadState() {
+async function initializeApp() {
+  state = await loadState();
+  if (isSupabaseConfigured()) {
+    saveSupabaseState().catch((error) => console.error(error));
+  }
+  render();
+}
+
+async function loadState() {
+  if (isSupabaseConfigured()) {
+    try {
+      const supabaseState = await loadSupabaseState();
+      if (supabaseState) {
+        return normalizeState(supabaseState);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   const saved = window.localStorage.getItem(STORAGE_KEY);
 
   if (!saved) {
@@ -190,6 +210,52 @@ function loadState() {
   } catch {
     return normalizeState(structuredClone(seedData));
   }
+}
+
+function isSupabaseConfigured() {
+  return Boolean(SUPABASE_CONFIG?.url && SUPABASE_CONFIG?.anonKey);
+}
+
+async function loadSupabaseState() {
+  const rows = await supabaseRequest(`/league_hub_state?id=eq.${encodeURIComponent(SUPABASE_STATE_ID)}&select=data`);
+  return rows?.[0]?.data ?? null;
+}
+
+async function saveSupabaseState() {
+  await supabaseRequest("/league_hub_state?on_conflict=id", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates"
+    },
+    body: JSON.stringify({
+      id: SUPABASE_STATE_ID,
+      data: state
+    })
+  });
+}
+
+async function supabaseRequest(path, options = {}) {
+  const baseUrl = SUPABASE_CONFIG.url.replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/rest/v1${path}`, {
+    method: options.method || "GET",
+    headers: {
+      apikey: SUPABASE_CONFIG.anonKey,
+      Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    body: options.body
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase request failed: ${response.status} ${await response.text()}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
 }
 
 function loadAuth() {
@@ -246,6 +312,7 @@ function normalizeState(candidate) {
   }));
 
   const normalized = {
+    managerPasscode: candidate.managerPasscode || "",
     selectedLeagueId: leagues.some((league) => league.id === candidate.selectedLeagueId)
       ? candidate.selectedLeagueId
       : leagues[0]?.id ?? null,
@@ -330,6 +397,14 @@ function normalizePaymentLinksForLeague(value) {
 
 function saveState() {
   state.leagues.forEach((league) => syncCalendarRounds(league));
+  if (isSupabaseConfigured()) {
+    saveSupabaseState().catch((error) => {
+      console.error(error);
+      elements.authMessage.textContent = "Could not save to Supabase. Check your project URL, anon key, and schema.";
+    });
+    return;
+  }
+
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -547,10 +622,11 @@ function loginMember(event) {
 function loginManager(event) {
   event.preventDefault();
   const passcode = event.currentTarget.passcode.value;
-  const savedPasscode = window.localStorage.getItem(MANAGER_PASSCODE_KEY);
+  const savedPasscode = state.managerPasscode;
 
   if (!savedPasscode) {
-    window.localStorage.setItem(MANAGER_PASSCODE_KEY, passcode);
+    state.managerPasscode = passcode;
+    saveState();
   } else if (passcode !== savedPasscode) {
     elements.authMessage.textContent = "Manager passcode is incorrect.";
     return;
@@ -1037,9 +1113,9 @@ function renderAccessControls(league) {
 
   elements.authStatus.hidden = !hasAccess;
   elements.logoutButton.hidden = !hasAccess;
-  elements.managerLoginHelp.textContent = window.localStorage.getItem(MANAGER_PASSCODE_KEY)
+  elements.managerLoginHelp.textContent = state.managerPasscode
     ? "Enter the manager passcode for full editing access."
-    : "Set a manager passcode for full editing access on this browser.";
+    : "Set a manager passcode for full editing access.";
 
   if (manager) {
     elements.authStatus.textContent = "Signed in as League Manager";
