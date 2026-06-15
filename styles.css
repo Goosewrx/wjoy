@@ -613,6 +613,55 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.tee-sheet {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.tee-sheet-header,
+.tee-sheet-controls {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.tee-sheet-header h4,
+.tee-sheet-header p {
+  margin: 0;
+}
+
+.tee-sheet-table {
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+
+.tee-sheet-row {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 8rem minmax(9rem, 0.8fr) minmax(14rem, 1.4fr) minmax(7rem, 0.5fr);
+  padding: 0.75rem;
+}
+
+.tee-sheet-row:last-child {
+  border-bottom: 0;
+}
+
+.tee-sheet-row-heading {
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .team-lineup-card,
 .team-availability-group {
   background: #fff;
@@ -747,6 +796,7 @@ th {
   .auth-grid,
   .info-display,
   .round-team-lineups,
+  .tee-sheet-row,
   .metrics-grid {
     grid-template-columns: 1fr;
   }

@@ -62,6 +62,7 @@ const seedData = {
           date: "2026-06-04",
           teeTime: "17:30",
           spots: 16,
+          teeInterval: 10,
           notes: "Front nine",
           availability: {
             "player-1": "confirmed",
@@ -72,7 +73,11 @@ const seedData = {
               outPlayerId: "player-2",
               subPlayerId: "player-3"
             }
-          ]
+          ],
+          teeSheet: {
+            times: {},
+            extra: []
+          }
         }
       ],
       teams: [
@@ -195,6 +200,8 @@ function normalizeState(candidate) {
     rounds: Array.isArray(league.rounds)
       ? league.rounds.map((round) => ({
           ...round,
+          teeInterval: Number(round.teeInterval || 10),
+          teeSheet: normalizeTeeSheet(round.teeSheet),
           availability: round.availability && typeof round.availability === "object" ? round.availability : {},
           playerIds: Array.isArray(round.playerIds) ? round.playerIds : [],
           substitutions: Array.isArray(round.substitutions)
@@ -225,6 +232,19 @@ function normalizePlayer(league, player) {
   return {
     ...player,
     paid: isPaidValue(player.paid) ? Number(league.dues || 0) : 0
+  };
+}
+
+function normalizeTeeSheet(teeSheet) {
+  return {
+    times: teeSheet && typeof teeSheet.times === "object" ? teeSheet.times : {},
+    extra: Array.isArray(teeSheet?.extra)
+      ? teeSheet.extra.map((row) => ({
+          id: row.id || uid("tee-extra"),
+          time: row.time || "",
+          label: row.label || "Open tee time"
+        }))
+      : []
   };
 }
 
@@ -688,13 +708,19 @@ function addRound(event) {
     date: data.date,
     teeTime: data.teeTime,
     spots: Number(data.spots) || 1,
+    teeInterval: Number(data.teeInterval) || 10,
     notes: data.notes.trim(),
     availability: {},
-    substitutions: []
+    substitutions: [],
+    teeSheet: {
+      times: {},
+      extra: []
+    }
   });
 
   event.currentTarget.reset();
-  event.currentTarget.spots.value = 16;
+  event.currentTarget.spots.value = 5;
+  event.currentTarget.teeInterval.value = 10;
   persistAndRender();
 }
 
@@ -1359,7 +1385,8 @@ function renderRounds(league) {
         <div class="round-meta">
           <span>${formatDate(round.date)}</span>
           <span>${formatTime(round.teeTime)}</span>
-          <span>${round.spots} tee slots</span>
+          <span>${round.spots} tee groups</span>
+          <span>${round.teeInterval} minute intervals</span>
           <span>${confirmedCount} confirmed</span>
           <span>${outPlayers.length} need subs</span>
           <span>${playingPlayers.length} expected players</span>
@@ -1370,6 +1397,7 @@ function renderRounds(league) {
       `;
 
       const lineups = roundTeamLineups(league, playingPlayers);
+      const teeSheet = roundTeeSheetTable(league, round);
 
       const availabilityBoard = document.createElement("div");
       availabilityBoard.className = "availability-board";
@@ -1439,6 +1467,7 @@ function renderRounds(league) {
       }
 
       card.append(lineups);
+      card.append(teeSheet);
       card.append(availabilityBoard);
       card.append(openRequests);
       card.append(substitutionList);
@@ -1561,6 +1590,189 @@ function roundTeamLineups(league, playingPlayers) {
   }
 
   return wrapper;
+}
+
+function roundTeeSheetTable(league, round) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "tee-sheet";
+
+  const header = document.createElement("div");
+  header.className = "tee-sheet-header";
+  header.innerHTML = `
+    <div>
+      <h4>Tee sheet</h4>
+      <p class="muted">Times start at ${formatTime(round.teeTime)} and advance every ${round.teeInterval} minutes unless a manager edits them.</p>
+    </div>
+  `;
+  wrapper.append(header);
+
+  const rows = teeSheetRows(league, round);
+  const table = document.createElement("div");
+  table.className = "tee-sheet-table";
+
+  const heading = document.createElement("div");
+  heading.className = "tee-sheet-row tee-sheet-row-heading";
+  heading.innerHTML = "<span>Time</span><span>Group</span><span>Players</span><span>Actions</span>";
+  table.append(heading);
+
+  rows.forEach((row) => {
+    const rowElement = document.createElement("div");
+    rowElement.className = "tee-sheet-row";
+
+    const timeCell = document.createElement("div");
+    if (isManager()) {
+      const input = document.createElement("input");
+      input.type = "time";
+      input.value = row.time;
+      input.addEventListener("change", () => setTeeSheetTime(round, row.id, input.value));
+      timeCell.append(input);
+    } else {
+      timeCell.innerHTML = `<strong>${formatTime(row.time)}</strong>`;
+    }
+
+    const groupCell = document.createElement("div");
+    if (isManager() && row.extra) {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = row.label;
+      input.addEventListener("change", () => setExtraTeeSheetLabel(round, row.id, input.value));
+      groupCell.append(input);
+    } else {
+      groupCell.innerHTML = `<strong>${escapeHtml(row.label)}</strong>`;
+    }
+
+    const playerCell = document.createElement("div");
+    playerCell.className = "chip-row";
+    if (row.players.length) {
+      row.players.forEach((player) => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = player.name;
+        playerCell.append(chip);
+      });
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "muted";
+      empty.textContent = row.extra ? "Open starting time." : "No players assigned.";
+      playerCell.append(empty);
+    }
+
+    const actionCell = document.createElement("div");
+    if (isManager() && row.extra) {
+      actionCell.append(actionButton("Remove", () => removeExtraTeeTime(round, row.id), "danger ghost"));
+    } else {
+      actionCell.append(document.createTextNode(row.extra ? "" : "Set from roster"));
+    }
+
+    rowElement.append(timeCell, groupCell, playerCell, actionCell);
+    table.append(rowElement);
+  });
+
+  wrapper.append(table);
+
+  if (isManager()) {
+    const controls = document.createElement("div");
+    controls.className = "tee-sheet-controls";
+    controls.append(actionButton("Add tee time", () => addExtraTeeTime(league, round)));
+    wrapper.append(controls);
+  }
+
+  return wrapper;
+}
+
+function teeSheetRows(league, round) {
+  const sheet = roundTeeSheet(round);
+  const interval = Number(round.teeInterval || 10);
+  const generatedRows = roundTeeSheetGroups(league, round).map((group, index) => ({
+    id: group.id,
+    label: group.name,
+    players: group.players,
+    time: sheet.times[group.id] || addMinutesToTime(round.teeTime, index * interval),
+    extra: false
+  }));
+
+  const extraRows = sheet.extra.map((row, index) => ({
+    id: row.id,
+    label: row.label || "Open tee time",
+    players: [],
+    time: row.time || addMinutesToTime(round.teeTime, (generatedRows.length + index) * interval),
+    extra: true
+  }));
+
+  return [...generatedRows, ...extraRows];
+}
+
+function roundTeeSheetGroups(league, round) {
+  const substitutions = roundSubstitutions(round);
+  const outIds = new Set(roundOutPlayers(league, round).map((player) => player.id));
+  const subByOut = new Map(substitutions.map((substitution) => [substitution.outPlayerId, playerById(league, substitution.subPlayerId)]));
+
+  return scrambleTeamGroups(league).map((group) => {
+    const players = [];
+    group.players.forEach((player) => {
+      if (outIds.has(player.id)) {
+        const sub = subByOut.get(player.id);
+        if (sub) {
+          players.push(sub);
+        }
+        return;
+      }
+      players.push(player);
+    });
+    return {
+      id: group.id,
+      name: group.name,
+      players
+    };
+  });
+}
+
+function roundTeeSheet(round) {
+  if (!round.teeSheet || typeof round.teeSheet !== "object") {
+    round.teeSheet = normalizeTeeSheet();
+  }
+  round.teeSheet.times = round.teeSheet.times && typeof round.teeSheet.times === "object" ? round.teeSheet.times : {};
+  round.teeSheet.extra = Array.isArray(round.teeSheet.extra) ? round.teeSheet.extra : [];
+  return round.teeSheet;
+}
+
+function setTeeSheetTime(round, rowId, time) {
+  roundTeeSheet(round).times[rowId] = time;
+  persistAndRender();
+}
+
+function setExtraTeeSheetLabel(round, rowId, label) {
+  const row = roundTeeSheet(round).extra.find((item) => item.id === rowId);
+  if (row) {
+    row.label = label.trim() || "Open tee time";
+    persistAndRender();
+  }
+}
+
+function addExtraTeeTime(league, round) {
+  const rows = teeSheetRows(league, round);
+  const lastRow = rows[rows.length - 1];
+  const time = addMinutesToTime(lastRow?.time || round.teeTime, Number(round.teeInterval || 10));
+  roundTeeSheet(round).extra.push({
+    id: uid("tee-extra"),
+    time,
+    label: "Open tee time"
+  });
+  persistAndRender();
+}
+
+function removeExtraTeeTime(round, rowId) {
+  const sheet = roundTeeSheet(round);
+  sheet.extra = sheet.extra.filter((row) => row.id !== rowId);
+  delete sheet.times[rowId];
+  persistAndRender();
+}
+
+function addMinutesToTime(value, minutes) {
+  const [hour = "0", minute = "0"] = String(value || "08:00").split(":");
+  const date = new Date();
+  date.setHours(Number(hour), Number(minute) + minutes, 0, 0);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 function roundSubContactList(league) {
