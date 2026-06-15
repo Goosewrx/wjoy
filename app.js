@@ -16,6 +16,9 @@ const seedData = {
       bio: "Friendly weekly scramble league for golfers who want organized rounds without extra paperwork.",
       bylaws: "Players should confirm availability for each round. If you cannot play, reach out to the sub list to cover your spot.",
       generalInfo: "Rounds are managed in Golf Genius. Use this hub for league roster, team, payment, and availability visibility.",
+      logoDataUrl: "",
+      textSize: "normal",
+      fieldSize: "normal",
       paymentLinks: DEFAULT_PAYMENT_LINKS,
       scheduleCalendar: defaultScheduleCalendarRows(),
       messages: [
@@ -107,12 +110,15 @@ const elements = {
   authPanel: document.querySelector("#auth-panel"),
   authStatus: document.querySelector("#auth-status"),
   bylawsDisplay: document.querySelector("#bylaws-display"),
+  clearLeagueLogo: document.querySelector("#clear-league-logo"),
   deleteLeague: document.querySelector("#delete-league"),
   directMessageForm: document.querySelector("#direct-message-form"),
   directMessageList: document.querySelector("#direct-message-list"),
   directRecipientSelect: document.querySelector("#direct-recipient-select"),
   emptyState: document.querySelector("#empty-state"),
   leagueCount: document.querySelector("#league-count"),
+  leagueLogo: document.querySelector("#league-logo"),
+  leagueLogoInput: document.querySelector("#league-logo-input"),
   hubNav: document.querySelector("#hub-nav"),
   leagueInfoDisplay: document.querySelector("#league-info-display"),
   leagueInfoForm: document.querySelector("#league-info-form"),
@@ -151,6 +157,8 @@ elements.leagueForm.addEventListener("submit", createLeague);
 elements.settingsForm.addEventListener("input", updateSettings);
 elements.leagueInfoForm.addEventListener("input", updateLeagueInfo);
 elements.leagueInfoForm.addEventListener("submit", saveLeagueInfo);
+elements.leagueLogoInput.addEventListener("change", uploadLeagueLogo);
+elements.clearLeagueLogo.addEventListener("click", clearLeagueLogo);
 elements.playerForm.addEventListener("submit", addPlayer);
 elements.rosterImportForm.addEventListener("submit", importRoster);
 elements.roundForm?.addEventListener("submit", addRound);
@@ -206,6 +214,9 @@ function normalizeState(candidate) {
     bio: league.bio || "",
     bylaws: league.bylaws || "",
     generalInfo: league.generalInfo || "",
+    logoDataUrl: league.logoDataUrl || "",
+    textSize: ["normal", "large", "xlarge"].includes(league.textSize) ? league.textSize : "normal",
+    fieldSize: ["normal", "large", "xlarge"].includes(league.fieldSize) ? league.fieldSize : "normal",
     paymentLinks: normalizePaymentLinksForLeague(league.paymentLinks),
     scheduleCalendar: normalizeScheduleCalendar(league.scheduleCalendar),
     messages: Array.isArray(league.messages) ? league.messages : [],
@@ -393,6 +404,9 @@ function createLeague(event) {
     bio: "",
     bylaws: "",
     generalInfo: "",
+    logoDataUrl: "",
+    textSize: "normal",
+    fieldSize: "normal",
     paymentLinks: DEFAULT_PAYMENT_LINKS,
     scheduleCalendar: defaultScheduleCalendarRows(),
     messages: [],
@@ -463,6 +477,33 @@ function updateLeagueInfo(event) {
   persistAndRender();
 }
 
+function uploadLeagueLogo(event) {
+  const league = activeLeague();
+  const file = event.currentTarget.files[0];
+
+  if (!league || !isManager() || !file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    league.logoDataUrl = String(reader.result || "");
+    persistAndRender();
+  });
+  reader.readAsDataURL(file);
+}
+
+function clearLeagueLogo() {
+  const league = activeLeague();
+  if (!league || !isManager()) {
+    return;
+  }
+
+  league.logoDataUrl = "";
+  elements.leagueLogoInput.value = "";
+  persistAndRender();
+}
+
 function saveLeagueInfo(event) {
   event.preventDefault();
   const league = activeLeague();
@@ -474,6 +515,8 @@ function saveLeagueInfo(event) {
   league.bio = data.bio || "";
   league.bylaws = data.bylaws || "";
   league.generalInfo = data.generalInfo || "";
+  league.textSize = data.textSize || "normal";
+  league.fieldSize = data.fieldSize || "normal";
   league.paymentLinks = data.paymentLinks || "";
   persistAndRender();
 }
@@ -960,7 +1003,13 @@ function render() {
   elements.leagueInfoForm.bio.value = league.bio;
   elements.leagueInfoForm.bylaws.value = league.bylaws;
   elements.leagueInfoForm.generalInfo.value = league.generalInfo;
+  elements.leagueInfoForm.textSize.value = league.textSize;
+  elements.leagueInfoForm.fieldSize.value = league.fieldSize;
   elements.leagueInfoForm.paymentLinks.value = league.paymentLinks;
+  elements.leagueInfoForm.classList.toggle("field-size-large", league.fieldSize === "large");
+  elements.leagueInfoForm.classList.toggle("field-size-xlarge", league.fieldSize === "xlarge");
+  elements.leagueLogo.hidden = !league.logoDataUrl;
+  elements.leagueLogo.src = league.logoDataUrl || "";
 
   syncCalendarRounds(league);
   renderMetrics(league);
@@ -1025,7 +1074,7 @@ function renderLeagueInfoDisplay(league) {
   elements.leagueInfoDisplay.replaceChildren();
   items.forEach(([label, value]) => {
     const article = document.createElement("article");
-    article.className = "info-card";
+    article.className = `info-card ${textSizeClass(league)}`;
     article.innerHTML = `<h3>${escapeHtml(label)}</h3><p>${escapeHtml(value || "No information posted yet.")}</p>`;
     elements.leagueInfoDisplay.append(article);
   });
@@ -1034,9 +1083,13 @@ function renderLeagueInfoDisplay(league) {
 function renderBylawsDisplay(league) {
   elements.bylawsDisplay.replaceChildren();
   const article = document.createElement("article");
-  article.className = "info-card";
+  article.className = `info-card ${textSizeClass(league)}`;
   article.innerHTML = `<h3>League by-laws</h3><p>${escapeHtml(league.bylaws || "No by-laws posted yet.")}</p>`;
   elements.bylawsDisplay.append(article);
+}
+
+function textSizeClass(league) {
+  return `text-size-${league.textSize || "normal"}`;
 }
 
 function renderPaymentLinks(league) {
