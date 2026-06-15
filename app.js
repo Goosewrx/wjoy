@@ -1171,6 +1171,8 @@ function calendarInput(type, value, onChange) {
   if (type === "number") {
     input.min = "0";
   }
+  input.addEventListener("focus", () => input.select());
+  input.addEventListener("click", () => input.select());
   input.addEventListener("change", () => onChange(input.value));
   return input;
 }
@@ -1198,16 +1200,28 @@ function addScheduleCalendarRow() {
     return;
   }
 
+  const nextDate = nextScheduleDate(league.scheduleCalendar);
   league.scheduleCalendar.push({
     id: uid("schedule-row"),
-    date: "",
+    date: nextDate,
     week: "New schedule row",
-    teeTime: "",
-    spots: "",
-    teeInterval: "",
+    teeTime: "17:00",
+    spots: 5,
+    teeInterval: 10,
     notes: ""
   });
   persistAndRender();
+}
+
+function nextScheduleDate(rows) {
+  const dates = rows
+    .map((row) => row.date)
+    .filter(Boolean)
+    .sort();
+  const lastDate = dates.at(-1);
+  const date = lastDate ? new Date(`${lastDate}T12:00:00`) : new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
 }
 
 function updateScheduleCalendarRow(rowId, field, value) {
