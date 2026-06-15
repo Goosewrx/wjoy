@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Golf Course Schedule Maker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">Golf course operations</p>
+      <h1>Build a daily staff schedule from coverage needs and availability.</h1>
+      <p class="hero-text">
+        Add the shifts you need covered in Carts & Range, Rangers/Starters, and Shop Employees,
+        then generate an assignment plan that uses AM/PM times and flags uncovered slots before the day starts.
+      </p>
+    </header>
+
+    <main>
+      <section class="panel" aria-labelledby="shifts-title">
+        <div class="panel-header">
+          <div>
+            <h2 id="shifts-title">Required shifts</h2>
+            <p>Template rows can include standard-week or outing-day coverage. Use Days to match the shift reference.</p>
+          </div>
+          <button id="add-shift" class="secondary" type="button">Add shift</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Zone</th>
+                <th>Role</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Needed</th>
+                <th>Days</th>
+                <th>Notes</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="shifts-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="people-title">
+        <div class="panel-header">
+          <div>
+            <h2 id="people-title">People</h2>
+            <p>
+              Zone can include one or more of the three areas. Use Always available when someone can work any shift,
+              or enter AM/PM windows like <strong>6:00 AM-12:00 PM, 1:00 PM-6:00 PM</strong>.
+            </p>
+          </div>
+          <button id="add-employee" class="secondary" type="button">Add person</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Zones</th>
+                <th>Availability</th>
+                <th>Always available</th>
+                <th>Preferred roles</th>
+                <th>Cannot work</th>
+                <th>Max shifts</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="employees-body"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <label class="mode-picker" for="schedule-mode">
+            Build schedule for
+            <select id="schedule-mode">
+              <option value="standard">Standard Week</option>
+              <option value="outing">Outing Days</option>
+            </select>
+          </label>
+          <button id="generate" class="primary" type="button">Generate schedule</button>
+          <button id="reset-sample" class="secondary" type="button">Reset sample data</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="schedule-title">
+        <div class="panel-header">
+          <div>
+            <h2 id="schedule-title">Generated schedule</h2>
+            <p id="result-summary" class="summary"></p>
+          </div>
+        </div>
+        <div id="error-box" class="error" hidden></div>
+        <div class="calendar-section" aria-labelledby="weekly-calendar-title">
+          <div>
+            <h3 id="weekly-calendar-title">Weekly calendar</h3>
+            <p>Quickly see who is working each day after the schedule is generated.</p>
+          </div>
+          <div id="weekly-calendar" class="weekly-calendar"></div>
+        </div>
+        <div class="result-grid">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Zone</th>
+                  <th>Time</th>
+                  <th>Role</th>
+                  <th>Days</th>
+                  <th>Person</th>
+                  <th>Fit</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="schedule-body"></tbody>
+            </table>
+          </div>
+          <aside>
+            <div class="unfilled">
+              <h3>Coverage gaps</h3>
+              <ul id="unfilled-list"></ul>
+            </div>
+            <div id="stats-panel" class="stats" aria-label="Schedule statistics"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="scheduler.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
