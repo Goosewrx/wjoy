@@ -1686,6 +1686,7 @@ function teamMemberCount(league) {
 }
 
 function renderRounds(league) {
+  syncCalendarRounds(league);
   elements.roundList.replaceChildren();
 
   if (!league.rounds.length) {
