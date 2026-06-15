@@ -1428,7 +1428,6 @@ function renderRounds(league) {
         <p class="muted">${escapeHtml(round.notes || "No notes")}</p>
       `;
 
-      const lineups = roundTeamLineups(league, playingPlayers);
       const teeSheet = roundTeeSheetTable(league, round);
 
       const availabilityBoard = document.createElement("div");
@@ -1498,7 +1497,6 @@ function renderRounds(league) {
         substitutionList.append(empty);
       }
 
-      card.append(lineups);
       card.append(teeSheet);
       card.append(availabilityBoard);
       card.append(openRequests);
@@ -1558,70 +1556,6 @@ function renderRoundAvailabilityGroups(league, round) {
 
     return section;
   });
-}
-
-function roundTeamLineups(league, playingPlayers) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "round-team-lineups";
-
-  if (!playingPlayers.length) {
-    const empty = document.createElement("p");
-    empty.className = "muted";
-    empty.textContent = "No active roster players yet.";
-    wrapper.append(empty);
-    return wrapper;
-  }
-
-  const playingIds = new Set(playingPlayers.map((player) => player.id));
-  scrambleTeamGroups(league).forEach((group) => {
-    const card = document.createElement("article");
-    card.className = "team-lineup-card";
-
-    const title = document.createElement("h4");
-    title.textContent = group.name;
-    card.append(title);
-
-    const chips = document.createElement("div");
-    chips.className = "chip-row";
-    const playingMembers = group.players.filter((player) => playingIds.has(player.id));
-
-    if (playingMembers.length) {
-      playingMembers.forEach((player) => {
-        const chip = document.createElement("span");
-        chip.className = "chip";
-        chip.textContent = player.name;
-        chips.append(chip);
-      });
-    } else {
-      const empty = document.createElement("span");
-      empty.className = "muted";
-      empty.textContent = "No players available.";
-      chips.append(empty);
-    }
-
-    card.append(chips);
-    wrapper.append(card);
-  });
-
-  const subOnlyPlayers = playingPlayers.filter((player) => !teamForPlayer(league, player.id));
-  if (subOnlyPlayers.length) {
-    const card = document.createElement("article");
-    card.className = "team-lineup-card";
-    const title = document.createElement("h4");
-    title.textContent = "Subs filling in";
-    const chips = document.createElement("div");
-    chips.className = "chip-row";
-    subOnlyPlayers.forEach((player) => {
-      const chip = document.createElement("span");
-      chip.className = "chip";
-      chip.textContent = player.name;
-      chips.append(chip);
-    });
-    card.append(title, chips);
-    wrapper.append(card);
-  }
-
-  return wrapper;
 }
 
 function roundTeeSheetTable(league, round) {
