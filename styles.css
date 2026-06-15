@@ -394,6 +394,19 @@ th {
   margin-top: 1rem;
 }
 
+.direct-message-box {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+}
+
+.direct-message-box h3,
+.direct-message-box p {
+  margin: 0;
+}
+
 .section-heading {
   justify-content: space-between;
   margin-bottom: 1rem;
@@ -609,8 +622,10 @@ th {
   justify-content: flex-end;
 }
 
-.contact-links a {
+.contact-links a,
+.contact-links button {
   background: var(--panel-soft);
+  border: 0;
   border-radius: 999px;
   color: var(--green-dark);
   font-size: 0.78rem;

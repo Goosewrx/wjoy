@@ -24,10 +24,11 @@ Then open `http://localhost:8000`.
 - Import roster spreadsheets from Excel-exported CSV/TSV files.
 - Create fixed scramble teams and assign rostered players to team rosters.
 - Track player statuses, contact details, notes, and paid/unpaid payments.
-- Show customer-visible scramble teams, active roster, and sub directory with contact links.
+- Show customer-visible scramble teams, active roster, and sub directory without exposing email or phone details.
 - Add rounds with course, date, tee slots, tee-sheet starting times, and notes.
 - Treat every active roster player as playing each round by default, grouped by fixed scramble teams with per-date can't-play availability and visible sub requests.
 - Let signed-in members post league messages and update only their own round availability.
+- Let signed-in members send direct portal messages to other rostered players.
 - Persist data in the browser with `localStorage`.
 
 ## New concept notes

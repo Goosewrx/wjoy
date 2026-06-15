@@ -26,6 +26,7 @@ const seedData = {
           createdAt: "2026-05-28T12:00:00.000Z"
         }
       ],
+      directMessages: [],
       players: [
         {
           id: "player-1",
@@ -105,6 +106,9 @@ const elements = {
   authPanel: document.querySelector("#auth-panel"),
   authStatus: document.querySelector("#auth-status"),
   deleteLeague: document.querySelector("#delete-league"),
+  directMessageForm: document.querySelector("#direct-message-form"),
+  directMessageList: document.querySelector("#direct-message-list"),
+  directRecipientSelect: document.querySelector("#direct-recipient-select"),
   emptyState: document.querySelector("#empty-state"),
   leagueCount: document.querySelector("#league-count"),
   hubNav: document.querySelector("#hub-nav"),
@@ -151,6 +155,7 @@ elements.teamForm.addEventListener("submit", addTeam);
 elements.memberLoginForm.addEventListener("submit", loginMember);
 elements.managerLoginForm.addEventListener("submit", loginManager);
 elements.messageForm.addEventListener("submit", addMessage);
+elements.directMessageForm.addEventListener("submit", addDirectMessage);
 elements.logoutButton.addEventListener("click", logout);
 elements.deleteLeague.addEventListener("click", deleteActiveLeague);
 elements.hubNav.addEventListener("click", changeHubPage);
@@ -199,6 +204,7 @@ function normalizeState(candidate) {
     generalInfo: league.generalInfo || "",
     paymentLinks: normalizePaymentLinksForLeague(league.paymentLinks),
     messages: Array.isArray(league.messages) ? league.messages : [],
+    directMessages: Array.isArray(league.directMessages) ? league.directMessages : [],
     players: Array.isArray(league.players) ? league.players.map((player) => normalizePlayer(league, player)) : [],
     rounds: Array.isArray(league.rounds)
       ? league.rounds.map((round) => ({
@@ -342,6 +348,7 @@ function createLeague(event) {
     generalInfo: "",
     paymentLinks: DEFAULT_PAYMENT_LINKS,
     messages: [],
+    directMessages: [],
     players: [],
     rounds: [],
     teams: []
@@ -765,6 +772,37 @@ function addMessage(event) {
   persistAndRender();
 }
 
+function addDirectMessage(event) {
+  event.preventDefault();
+  const league = activeLeague();
+  const member = currentMember(league);
+
+  if (!league || (!member && !isManager())) {
+    return;
+  }
+
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  const recipient = playerById(league, data.recipientId);
+  const text = data.message.trim();
+
+  if (!recipient || !text) {
+    return;
+  }
+
+  league.directMessages.unshift({
+    id: uid("dm"),
+    fromPlayerId: member?.id ?? "",
+    fromName: member?.name ?? "League Manager",
+    toPlayerId: recipient.id,
+    toName: recipient.name,
+    text,
+    createdAt: new Date().toISOString()
+  });
+
+  event.currentTarget.reset();
+  persistAndRender();
+}
+
 function deleteActiveLeague() {
   const league = activeLeague();
   if (!league || !isManager()) {
@@ -836,6 +874,7 @@ function render() {
   renderPaymentLinks(league);
   renderPublicRosters(league);
   renderMessages(league);
+  renderDirectMessages(league);
   renderPlayers(league);
   renderTeams(league);
   renderRounds(league);
@@ -988,6 +1027,55 @@ function renderMessages(league) {
   });
 }
 
+function renderDirectMessages(league) {
+  const member = currentMember(league);
+  const visibleMessages = isManager()
+    ? league.directMessages
+    : league.directMessages.filter((message) => message.fromPlayerId === member?.id || message.toPlayerId === member?.id);
+
+  renderDirectRecipientOptions(league, member);
+  elements.directMessageList.replaceChildren();
+
+  if (!visibleMessages.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-copy";
+    empty.textContent = isManager() ? "No direct messages yet." : "No direct messages for you yet.";
+    elements.directMessageList.append(empty);
+    return;
+  }
+
+  visibleMessages.forEach((message) => {
+    const article = document.createElement("article");
+    article.className = "message-card";
+    article.innerHTML = `
+      <div>
+        <strong>${escapeHtml(message.fromName)} to ${escapeHtml(message.toName)}</strong>
+        <span class="muted">${formatMessageDate(message.createdAt)}</span>
+      </div>
+      <p>${escapeHtml(message.text)}</p>
+    `;
+    elements.directMessageList.append(article);
+  });
+}
+
+function renderDirectRecipientOptions(league, member) {
+  elements.directRecipientSelect.replaceChildren();
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose league member";
+  elements.directRecipientSelect.append(placeholder);
+
+  league.players
+    .filter((player) => isManager() || player.id !== member?.id)
+    .forEach((player) => {
+      const option = document.createElement("option");
+      option.value = player.id;
+      option.textContent = `${player.name} (${player.status})`;
+      elements.directRecipientSelect.append(option);
+    });
+}
+
 function renderLeagueList() {
   elements.leagueCount.textContent = state.leagues.length;
   elements.leagueList.replaceChildren();
@@ -1071,8 +1159,8 @@ function renderPlayers(league) {
         <div class="muted">${paid ? money(league.dues) : money(0)} of ${money(league.dues)}</div>
       </td>
       <td>
-        <div>${escapeHtml(player.email || "No email")}</div>
-        <div class="muted">${escapeHtml(player.phone || "No phone")}</div>
+        <div>Use portal messages</div>
+        <div class="muted">Email and phone hidden</div>
       </td>
       <td></td>
     `;
@@ -1899,29 +1987,31 @@ function playerById(league, playerId) {
 function contactLinks(player) {
   const links = document.createElement("div");
   links.className = "contact-links";
+  const member = currentMember();
 
-  if (player.email) {
-    const email = document.createElement("a");
-    email.href = `mailto:${player.email}`;
-    email.textContent = "Email";
-    links.append(email);
+  if (member?.id === player.id) {
+    const current = document.createElement("span");
+    current.className = "muted";
+    current.textContent = "You";
+    links.append(current);
+    return links;
   }
 
-  if (player.phone) {
-    const phone = document.createElement("a");
-    phone.href = `tel:${player.phone}`;
-    phone.textContent = "Call";
-    links.append(phone);
-  }
-
-  if (!links.children.length) {
-    const empty = document.createElement("span");
-    empty.className = "muted";
-    empty.textContent = "No contact";
-    links.append(empty);
-  }
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "ghost";
+  button.textContent = "Message";
+  button.addEventListener("click", () => startDirectMessage(player.id));
+  links.append(button);
 
   return links;
+}
+
+function startDirectMessage(playerId) {
+  activeHubPage = "messages";
+  renderHubPages();
+  elements.directRecipientSelect.value = playerId;
+  elements.directMessageForm.message.focus();
 }
 
 function actionButton(label, onClick, className = "ghost") {
