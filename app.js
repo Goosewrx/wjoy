@@ -1144,7 +1144,7 @@ function renderScheduleCalendar(league) {
     if (isManager()) {
       dateCell.append(calendarInput("date", row.date, (value) => updateScheduleCalendarRow(row.id, "date", value)));
       weekCell.append(calendarInput("text", row.week, (value) => updateScheduleCalendarRow(row.id, "week", value)));
-      startCell.append(calendarInput("time", row.teeTime, (value) => updateScheduleCalendarRow(row.id, "teeTime", value)));
+      startCell.append(calendarInput("text", row.teeTime, (value) => updateScheduleCalendarRow(row.id, "teeTime", normalizeTimeEntry(value))));
       groupsCell.append(calendarInput("number", row.spots, (value) => updateScheduleCalendarRow(row.id, "spots", value)));
       intervalCell.append(calendarInput("number", row.teeInterval, (value) => updateScheduleCalendarRow(row.id, "teeInterval", value)));
       notesCell.append(calendarInput("text", row.notes, (value) => updateScheduleCalendarRow(row.id, "notes", value)));
@@ -1168,6 +1168,9 @@ function calendarInput(type, value, onChange) {
   const input = document.createElement("input");
   input.type = type;
   input.value = value || "";
+  if (type === "text" && /^\d{1,2}:\d{2}$/.test(String(value || ""))) {
+    input.placeholder = "HH:MM";
+  }
   if (type === "number") {
     input.min = "0";
   }
@@ -1175,6 +1178,24 @@ function calendarInput(type, value, onChange) {
   input.addEventListener("click", () => input.select());
   input.addEventListener("change", () => onChange(input.value));
   return input;
+}
+
+function normalizeTimeEntry(value) {
+  const raw = String(value || "").trim();
+  const compact = raw.replace(/[^0-9]/g, "");
+
+  if (/^\d{1,2}:\d{2}$/.test(raw)) {
+    const [hour, minute] = raw.split(":");
+    return `${String(Math.min(Number(hour), 23)).padStart(2, "0")}:${String(Math.min(Number(minute), 59)).padStart(2, "0")}`;
+  }
+
+  if (compact.length === 3 || compact.length === 4) {
+    const hour = compact.slice(0, -2);
+    const minute = compact.slice(-2);
+    return `${String(Math.min(Number(hour), 23)).padStart(2, "0")}:${String(Math.min(Number(minute), 59)).padStart(2, "0")}`;
+  }
+
+  return raw;
 }
 
 function scheduleRowClass(row) {
