@@ -152,7 +152,7 @@ elements.leagueInfoForm.addEventListener("input", updateLeagueInfo);
 elements.leagueInfoForm.addEventListener("submit", saveLeagueInfo);
 elements.playerForm.addEventListener("submit", addPlayer);
 elements.rosterImportForm.addEventListener("submit", importRoster);
-elements.roundForm.addEventListener("submit", addRound);
+elements.roundForm?.addEventListener("submit", addRound);
 elements.teamForm.addEventListener("submit", addTeam);
 document.querySelector("#add-schedule-row").addEventListener("click", addScheduleCalendarRow);
 elements.memberLoginForm.addEventListener("submit", loginMember);
@@ -271,8 +271,8 @@ function normalizeScheduleCalendar(rows) {
     week: row.week || "",
     notes: row.notes || "",
     teeTime: row.teeTime || (isPlayableScheduleRow(row) ? "17:00" : ""),
-    spots: Number(row.spots ?? (isPlayableScheduleRow(row) ? 5 : 0)),
-    teeInterval: Number(row.teeInterval || 10)
+    spots: row.spots === "" ? "" : Number(row.spots ?? (isPlayableScheduleRow(row) ? 5 : 0)),
+    teeInterval: row.teeInterval === "" ? "" : Number(row.teeInterval || 10)
   }));
 }
 
@@ -1202,9 +1202,9 @@ function addScheduleCalendarRow() {
     id: uid("schedule-row"),
     date: "",
     week: "New schedule row",
-    teeTime: "17:00",
-    spots: 5,
-    teeInterval: 10,
+    teeTime: "",
+    spots: "",
+    teeInterval: "",
     notes: ""
   });
   persistAndRender();
