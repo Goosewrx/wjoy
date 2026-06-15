@@ -102,9 +102,17 @@
         </section>
 
         <div id="league-workspace" hidden>
-          <section class="metrics-grid" id="metrics"></section>
+          <nav id="hub-nav" class="hub-nav" aria-label="League hub pages">
+            <button type="button" data-hub-page="overview">Overview</button>
+            <button type="button" data-hub-page="roster">Roster & Teams</button>
+            <button type="button" data-hub-page="schedule">Schedule & Tee Sheet</button>
+            <button type="button" data-hub-page="messages">Messages</button>
+            <button type="button" data-hub-page="admin" class="manager-only">Manager Tools</button>
+          </nav>
 
-          <section class="panel">
+          <section class="metrics-grid hub-page" data-hub-page="overview" id="metrics"></section>
+
+          <section class="panel hub-page" data-hub-page="overview">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">League information</p>
@@ -115,7 +123,7 @@
             <div id="league-info-display" class="info-display"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel hub-page" data-hub-page="overview">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Payments</p>
@@ -126,7 +134,7 @@
             <div id="payment-link-list" class="payment-link-list"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel hub-page" data-hub-page="roster">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Customer view</p>
@@ -150,7 +158,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel hub-page" data-hub-page="messages">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Message portal</p>
@@ -168,7 +176,7 @@
             <div id="message-list" class="message-list"></div>
           </section>
 
-          <section class="panel manager-only">
+          <section class="panel manager-only hub-page" data-hub-page="admin">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">League setup</p>
@@ -196,7 +204,7 @@
             </form>
           </section>
 
-          <section class="panel manager-only">
+          <section class="panel manager-only hub-page" data-hub-page="admin">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">League info</p>
@@ -226,7 +234,7 @@
           </section>
 
           <div class="workspace-grid">
-            <section class="panel manager-only">
+            <section class="panel manager-only hub-page" data-hub-page="admin">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Roster</p>
@@ -303,7 +311,7 @@
               </div>
             </section>
 
-            <section class="panel manager-only">
+            <section class="panel manager-only hub-page" data-hub-page="admin">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Scramble teams</p>
@@ -339,7 +347,7 @@
               <div id="team-list" class="team-list"></div>
             </section>
 
-            <section class="panel">
+            <section class="panel hub-page" data-hub-page="schedule">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Schedule</p>

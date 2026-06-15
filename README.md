@@ -19,6 +19,7 @@ Then open `http://localhost:8000`.
 - Add league bio, by-laws, and general information.
 - Add member-visible online payment links for league dues, defaulting to the Oaks/CandiaWoods secure payment portal.
 - Gate each league portal behind roster-email member login or manager passcode access.
+- Split each league hub into Overview, Roster & Teams, Schedule & Tee Sheet, Messages, and Manager Tools pages.
 - Add and remove rostered players.
 - Import roster spreadsheets from Excel-exported CSV/TSV files.
 - Create fixed scramble teams and assign rostered players to team rosters.

@@ -96,6 +96,7 @@ const seedData = {
 
 let state = loadState();
 let auth = loadAuth();
+let activeHubPage = "overview";
 
 const elements = {
   activeLeagueSubtitle: document.querySelector("#active-league-subtitle"),
@@ -106,6 +107,7 @@ const elements = {
   deleteLeague: document.querySelector("#delete-league"),
   emptyState: document.querySelector("#empty-state"),
   leagueCount: document.querySelector("#league-count"),
+  hubNav: document.querySelector("#hub-nav"),
   leagueInfoDisplay: document.querySelector("#league-info-display"),
   leagueInfoForm: document.querySelector("#league-info-form"),
   leagueForm: document.querySelector("#league-form"),
@@ -151,6 +153,7 @@ elements.managerLoginForm.addEventListener("submit", loginManager);
 elements.messageForm.addEventListener("submit", addMessage);
 elements.logoutButton.addEventListener("click", logout);
 elements.deleteLeague.addEventListener("click", deleteActiveLeague);
+elements.hubNav.addEventListener("click", changeHubPage);
 
 render();
 
@@ -467,7 +470,18 @@ function loginManager(event) {
 function logout() {
   auth = null;
   saveAuth();
+  activeHubPage = "overview";
   render();
+}
+
+function changeHubPage(event) {
+  const button = event.target.closest("[data-hub-page]");
+  if (!button || button.hidden) {
+    return;
+  }
+
+  activeHubPage = button.dataset.hubPage;
+  renderHubPages();
 }
 
 function isManager() {
@@ -825,6 +839,7 @@ function render() {
   renderPlayers(league);
   renderTeams(league);
   renderRounds(league);
+  renderHubPages();
 }
 
 function renderAccessControls(league) {
@@ -847,6 +862,23 @@ function renderAccessControls(league) {
   } else if (member) {
     elements.authStatus.textContent = `Signed in as ${member.name}`;
   }
+}
+
+function renderHubPages() {
+  if (!isManager() && activeHubPage === "admin") {
+    activeHubPage = "overview";
+  }
+
+  elements.hubNav.querySelectorAll("[data-hub-page]").forEach((button) => {
+    const page = button.dataset.hubPage;
+    button.hidden = page === "admin" && !isManager();
+    button.classList.toggle("active", page === activeHubPage);
+  });
+
+  document.querySelectorAll(".hub-page").forEach((section) => {
+    const page = section.dataset.hubPage;
+    section.hidden = page !== activeHubPage || (page === "admin" && !isManager());
+  });
 }
 
 function renderLeagueInfoDisplay(league) {
