@@ -106,6 +106,7 @@ const elements = {
   authMessage: document.querySelector("#auth-message"),
   authPanel: document.querySelector("#auth-panel"),
   authStatus: document.querySelector("#auth-status"),
+  bylawsDisplay: document.querySelector("#bylaws-display"),
   deleteLeague: document.querySelector("#delete-league"),
   directMessageForm: document.querySelector("#direct-message-form"),
   directMessageList: document.querySelector("#direct-message-list"),
@@ -964,6 +965,7 @@ function render() {
   syncCalendarRounds(league);
   renderMetrics(league);
   renderLeagueInfoDisplay(league);
+  renderBylawsDisplay(league);
   renderPaymentLinks(league);
   renderPublicRosters(league);
   renderMessages(league);
@@ -1017,7 +1019,6 @@ function renderHubPages() {
 function renderLeagueInfoDisplay(league) {
   const items = [
     ["League bio", league.bio],
-    ["By-laws", league.bylaws],
     ["General information", league.generalInfo]
   ];
 
@@ -1028,6 +1029,14 @@ function renderLeagueInfoDisplay(league) {
     article.innerHTML = `<h3>${escapeHtml(label)}</h3><p>${escapeHtml(value || "No information posted yet.")}</p>`;
     elements.leagueInfoDisplay.append(article);
   });
+}
+
+function renderBylawsDisplay(league) {
+  elements.bylawsDisplay.replaceChildren();
+  const article = document.createElement("article");
+  article.className = "info-card";
+  article.innerHTML = `<h3>League by-laws</h3><p>${escapeHtml(league.bylaws || "No by-laws posted yet.")}</p>`;
+  elements.bylawsDisplay.append(article);
 }
 
 function renderPaymentLinks(league) {
@@ -1126,7 +1135,7 @@ function renderScheduleCalendar(league) {
 
   const heading = document.createElement("div");
   heading.className = "schedule-calendar-row schedule-calendar-heading";
-  heading.innerHTML = "<span>Date</span><span>Week #</span><span>Start</span><span>Groups</span><span>Interval</span><span>Notes</span><span>Actions</span>";
+  heading.innerHTML = "<span>Date</span><span>Week #</span><span>Start</span><span>Groups</span><span>Notes</span><span>Actions</span>";
   elements.scheduleCalendarTable.append(heading);
 
   league.scheduleCalendar.forEach((row) => {
@@ -1137,16 +1146,14 @@ function renderScheduleCalendar(league) {
     const weekCell = document.createElement("div");
     const startCell = document.createElement("div");
     const groupsCell = document.createElement("div");
-    const intervalCell = document.createElement("div");
     const notesCell = document.createElement("div");
     const actionCell = document.createElement("div");
 
     if (isManager()) {
       dateCell.append(calendarInput("date", row.date, (value) => updateScheduleCalendarRow(row.id, "date", value)));
       weekCell.append(calendarInput("text", row.week, (value) => updateScheduleCalendarRow(row.id, "week", value)));
-      startCell.append(calendarInput("text", row.teeTime, (value) => updateScheduleCalendarRow(row.id, "teeTime", normalizeTimeEntry(value))));
+      startCell.append(calendarInput("text", row.teeTime ? formatTime(row.teeTime) : "", (value) => updateScheduleCalendarRow(row.id, "teeTime", normalizeTimeEntry(value))));
       groupsCell.append(calendarInput("number", row.spots, (value) => updateScheduleCalendarRow(row.id, "spots", value)));
-      intervalCell.append(calendarInput("number", row.teeInterval, (value) => updateScheduleCalendarRow(row.id, "teeInterval", value)));
       notesCell.append(calendarInput("text", row.notes, (value) => updateScheduleCalendarRow(row.id, "notes", value)));
       actionCell.append(actionButton("Remove", () => removeScheduleCalendarRow(row.id), "danger ghost"));
     } else {
@@ -1154,12 +1161,11 @@ function renderScheduleCalendar(league) {
       weekCell.textContent = row.week;
       startCell.textContent = isPlayableScheduleRow(row) ? formatTime(row.teeTime) : "";
       groupsCell.textContent = isPlayableScheduleRow(row) ? row.spots : "";
-      intervalCell.textContent = isPlayableScheduleRow(row) ? `${row.teeInterval} min` : "";
       notesCell.textContent = row.notes || "";
       actionCell.textContent = "";
     }
 
-    rowElement.append(dateCell, weekCell, startCell, groupsCell, intervalCell, notesCell, actionCell);
+    rowElement.append(dateCell, weekCell, startCell, groupsCell, notesCell, actionCell);
     elements.scheduleCalendarTable.append(rowElement);
   });
 }
@@ -1182,6 +1188,19 @@ function calendarInput(type, value, onChange) {
 
 function normalizeTimeEntry(value) {
   const raw = String(value || "").trim();
+  const meridiemMatch = raw.match(/^(\d{1,2})(?::?(\d{2}))?\s*(am|pm)$/i);
+  if (meridiemMatch) {
+    let hour = Number(meridiemMatch[1]);
+    const minute = Number(meridiemMatch[2] || 0);
+    const meridiem = meridiemMatch[3].toLowerCase();
+    if (meridiem === "pm" && hour < 12) {
+      hour += 12;
+    }
+    if (meridiem === "am" && hour === 12) {
+      hour = 0;
+    }
+    return `${String(Math.min(hour, 23)).padStart(2, "0")}:${String(Math.min(minute, 59)).padStart(2, "0")}`;
+  }
   const compact = raw.replace(/[^0-9]/g, "");
 
   if (/^\d{1,2}:\d{2}$/.test(raw)) {
@@ -1348,13 +1367,17 @@ function renderMetrics(league) {
   const totalDue = league.players.reduce((sum, player) => sum + amountDue(league, player), 0);
   const totalPaid = league.players.reduce((sum, player) => sum + Number(player.paid || 0), 0);
   const paidPlayers = league.players.filter((player) => amountDue(league, player) <= 0).length;
+  const member = currentMember(league);
+  const memberPaid = member ? amountDue(league, member) <= 0 : false;
   const nextRound = [...league.rounds]
     .filter((round) => round.date)
     .sort((a, b) => a.date.localeCompare(b.date))[0];
 
   const cards = [
     ["Active roster", `${activePlayers}/${league.rosterLimit}`, `${openSpots} open spots`],
-    ["Payments", `${paidPlayers}/${league.players.length}`, `${money(totalPaid)} paid - ${money(totalDue)} remaining`],
+    isManager()
+      ? ["Payments", `${paidPlayers}/${league.players.length}`, `${money(totalPaid)} paid - ${money(totalDue)} remaining`]
+      : ["Your payment", memberPaid ? "Paid" : "Unpaid", "Only your status is shown"],
     ["Teams", league.teams.length, `${teamMemberCount(league)} rostered on teams`],
     ["Rounds", league.rounds.length, nextRound ? `Next: ${formatDate(nextRound.date)}` : "No rounds scheduled"],
     ["Round starters", league.rounds.reduce((sum, round) => sum + roundPlayingPlayers(league, round).length, 0), "Roster players scheduled by default"]

@@ -104,6 +104,7 @@
         <div id="league-workspace" hidden>
           <nav id="hub-nav" class="hub-nav" aria-label="League hub pages">
             <button type="button" data-hub-page="overview">Overview</button>
+            <button type="button" data-hub-page="bylaws">By-laws</button>
             <button type="button" data-hub-page="roster">Roster & Teams</button>
             <button type="button" data-hub-page="schedule">Schedule & Tee Sheet</button>
             <button type="button" data-hub-page="messages">Messages</button>
@@ -116,11 +117,22 @@
             <div class="section-heading">
               <div>
                 <p class="eyebrow">League information</p>
-                <h2>Bio, by-laws, and general notes</h2>
+                <h2>Bio and general notes</h2>
               </div>
               <span class="pill">Read only</span>
             </div>
             <div id="league-info-display" class="info-display"></div>
+          </section>
+
+          <section class="panel hub-page" data-hub-page="bylaws">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">League rules</p>
+                <h2>By-laws</h2>
+              </div>
+              <span class="pill">Read only</span>
+            </div>
+            <div id="bylaws-display" class="info-display"></div>
           </section>
 
           <section class="panel hub-page" data-hub-page="overview">
@@ -379,7 +391,7 @@
                 <div class="section-heading">
                   <div>
                     <h3>League schedule calendar</h3>
-                  <p class="muted">Manager-editable date, week, tee start, interval, and note table. Playable rows generate rounds automatically.</p>
+                    <p class="muted">Manager-editable date, week, standard start time, tee groups, and note table. Playable rows generate rounds automatically.</p>
                   </div>
                   <button id="add-schedule-row" type="button" class="manager-only">Add calendar row</button>
                 </div>
